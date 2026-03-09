@@ -17,11 +17,11 @@ end
 
 local function BuildParentPanel()
     local panel = CreateFrame("Frame")
-    panel.name = "MathWro's QOL"
+    panel.name = "MathWro QOL"
 
     local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 16, -16)
-    title:SetText("MathWro's QOL")
+    title:SetText("MathWro QOL")
 
     local ver = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     ver:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
@@ -180,7 +180,7 @@ end
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:SetScript("OnEvent", function(self, event, arg1)
-    if arg1 ~= "MathWro's QOL" then return end
+    if arg1 ~= "MathWro QOL" then return end
     self:UnregisterEvent("ADDON_LOADED")
 
     local parentPanel  = BuildParentPanel()

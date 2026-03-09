@@ -1,4 +1,4 @@
-# MathWro's QOL
+# MathWro QOL
 
 A personal World of Warcraft addon for quality-of-life tweaks. Built for Midnight (patch 12.x).
 
@@ -21,13 +21,13 @@ Keep selected action bars (1–10) visible during vehicle combat. By default Elv
 
 1. Download or clone this repository into your addons folder:
    ```
-   World of Warcraft/_retail_/Interface/AddOns/MathWro's QOL/
+   World of Warcraft/_retail_/Interface/AddOns/MathWro QOL/
    ```
-2. Launch WoW and enable **MathWro's QOL** at the character select screen.
+2. Launch WoW and enable **MathWro QOL** at the character select screen.
 
 ## Configuration
 
-Open **Interface → AddOns → MathWro's QOL** in-game. Settings are split across two pages:
+Open **Interface → AddOns → MathWro QOL** in-game. Settings are split across two pages:
 - **General** — Game Menu options
 - **ElvUI Plugins** — ElvUI-dependent options (greyed out if ElvUI is not loaded)
 

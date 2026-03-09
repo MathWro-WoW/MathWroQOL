@@ -1,5 +1,5 @@
 ## Interface: 120000, 120001
-## Title: MathWro's QOL
+## Title: MathWro QOL
 ## Notes: Quality of Life improvements by MathWro
 ## Author: MathWro
 ## Version: 1.0.0
