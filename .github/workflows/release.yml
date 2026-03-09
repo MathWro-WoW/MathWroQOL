@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - '*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v1.0.0 or v1.0.0-alpha.1)'
+        required: true
+        type: string
 
 jobs:
   release:
@@ -14,6 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: BigWigsMods/packager@v2
         env:
