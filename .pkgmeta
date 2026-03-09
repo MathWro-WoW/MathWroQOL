@@ -1,4 +1,5 @@
 package-as: MathWroQOL
+curse-id: 1482222
 
 ignore:
   - .pkgmeta
