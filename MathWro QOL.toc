@@ -2,7 +2,7 @@
 ## Title: MathWro QOL
 ## Notes: Quality of Life improvements by MathWro
 ## Author: MathWro
-## Version: 1.0.0
+## Version: @project-version@
 ## SavedVariables: MathWroQOLDB
 
 Core.lua

@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Critical: TOC Filename
 
-The `.toc` file name must exactly match the addon folder name: `MathWro QOL_Mainline.toc` inside `MathWro QOL/`. Mismatch = addon invisible in game. Any hardcoded addon name strings in Lua (e.g. `ADDON_LOADED` checks) must also use `"MathWro QOL"`.
+The `.toc` file name must exactly match the addon folder name: `MathWro QOL.toc` inside `MathWro QOL/`. Mismatch = addon invisible in game. Any hardcoded addon name strings in Lua (e.g. `ADDON_LOADED` checks) must also use `"MathWro QOL"`.
 
 ## Testing
 
