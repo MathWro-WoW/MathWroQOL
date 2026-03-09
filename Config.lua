@@ -180,7 +180,7 @@ end
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:SetScript("OnEvent", function(self, event, arg1)
-    if arg1 ~= "MathWro QOL" then return end
+    if arg1 ~= "MathWroQOL" then return end
     self:UnregisterEvent("ADDON_LOADED")
 
     local parentPanel  = BuildParentPanel()

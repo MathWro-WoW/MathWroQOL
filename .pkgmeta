@@ -1,4 +1,4 @@
-package-as: MathWro QOL
+package-as: MathWroQOL
 
 ignore:
   - .pkgmeta

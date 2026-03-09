@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Critical: TOC Filename
 
-The `.toc` file name must exactly match the addon folder name: `MathWro QOL.toc` inside `MathWro QOL/`. Mismatch = addon invisible in game. Any hardcoded addon name strings in Lua (e.g. `ADDON_LOADED` checks) must also use `"MathWro QOL"`.
+The `.toc` file name must exactly match the addon folder name: `MathWroQOL.toc` inside `MathWroQOL/`. Mismatch = addon invisible in game. Any hardcoded addon name strings in Lua (e.g. `ADDON_LOADED` checks) must also use `"MathWroQOL"`.
 
 ## Testing
 
@@ -19,7 +19,7 @@ No build step or test runner. Test by loading the addon in WoW retail (`_retail_
 
 ## Interface Version
 
-Target: `120000, 120001` (Midnight, patch 12.x). Both values are required in the TOC for compatibility with minor patch variants.
+Target: `120001` (Midnight, patch 12.0.1). Use a single value — the BigWigs packager does not support comma-separated interface values and will generate a broken `release.json` if you do.
 
 ## Architecture
 
