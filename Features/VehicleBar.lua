@@ -104,14 +104,15 @@ function VehicleBar:Initialize()
         end)
     end
 
-    -- Force bars visible whenever a vehicle-like state begins.
-    -- UPDATE_OVERRIDE_ACTIONBAR covers override bar entry (most common case).
-    -- UNIT_ENTERED_VEHICLE covers traditional vehicle UI.
-    -- Both events also fire on exit, so we guard with isVehicleLike().
+    -- Force bars visible on vehicle-like entry; fade them back out on exit.
+    -- UPDATE_OVERRIDE_ACTIONBAR fires on both override bar entry and exit.
+    -- UNIT_ENTERED_VEHICLE / UNIT_EXITED_VEHICLE cover traditional vehicle UI.
+    -- isVehicleLike() determines which direction to go.
     local vehicleEvents = CreateFrame("Frame")
     vehicleEvents:RegisterEvent("UPDATE_OVERRIDE_ACTIONBAR")
     vehicleEvents:RegisterEvent("VEHICLE_UPDATE")
     vehicleEvents:RegisterUnitEvent("UNIT_ENTERED_VEHICLE", "player")
+    vehicleEvents:RegisterUnitEvent("UNIT_EXITED_VEHICLE", "player")
     vehicleEvents:SetScript("OnEvent", function(self, event)
         if isVehicleLike() then
             forceShowEnabledBars()
