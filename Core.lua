@@ -8,6 +8,11 @@ local defaults = {
         enabled = true,
         bars = { [1] = true },
     },
+    cdmButton = {
+        enabled = true,
+        slashWA = true,
+        slashCM = true,
+    },
 }
 
 local function applyDefaults(target, source)
