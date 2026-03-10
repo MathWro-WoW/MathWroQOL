@@ -16,6 +16,7 @@ end
 -- Called every OnShow because Blizzard rebuilds button layout on each open.
 local function repositionButtons(anchorFrame)
     if not btn or not btn:IsShown() then return end
+    if not anchorFrame then return end
 
     -- One button height + standard spacing used by the game menu template
     local BUTTON_HEIGHT = 24
