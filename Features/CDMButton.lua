@@ -32,7 +32,9 @@ local function repositionButtons(anchorFrame)
         GameMenuButtonAddOns:SetPoint("TOP", btn, "BOTTOM", 0, -SPACING)
     end
 
-    -- Expand the frame to fit the extra button
+    -- Expand the frame to fit the extra button.
+    -- Safe to add each OnShow because Blizzard's GameMenuFrame_ShowMenu
+    -- resets the frame height before OnShow fires.
     local extraHeight = BUTTON_HEIGHT + SPACING
     GameMenuFrame:SetHeight(GameMenuFrame:GetHeight() + extraHeight)
 end
@@ -81,16 +83,16 @@ function CDMButton:Initialize()
     end
 
     -- Register slash commands (cannot be unregistered; toggled by db flag at fire time)
-    if db.slashWA then
-        SLASH_MQOLWA1 = "/wa"
-        SlashCmdList["MQOLWA"] = function()
+    SLASH_MQOLWA1 = "/wa"
+    SlashCmdList["MQOLWA"] = function()
+        if addon.db.cdmButton and addon.db.cdmButton.slashWA then
             openCDM()
         end
     end
 
-    if db.slashCM then
-        SLASH_MQOLCM1 = "/cm"
-        SlashCmdList["MQOLCM"] = function()
+    SLASH_MQOLCM1 = "/cm"
+    SlashCmdList["MQOLCM"] = function()
+        if addon.db.cdmButton and addon.db.cdmButton.slashCM then
             openCDM()
         end
     end

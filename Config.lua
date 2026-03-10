@@ -118,7 +118,7 @@ local function BuildGeneralPanel()
 
     local slashNote = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     slashNote:SetPoint("TOPLEFT", cdmEnabledCB, "BOTTOMLEFT", 0, -8)
-    slashNote:SetText("Slash commands (requires /reload to take effect):")
+    slashNote:SetText("Slash commands:")
 
     local waCB = MakeCheckbox(panel, "Enable /wa command", 16, -330,
         function() return addon.db.cdmButton and addon.db.cdmButton.slashWA end,
