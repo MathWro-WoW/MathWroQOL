@@ -166,7 +166,7 @@ local function BuildElvUIPanel()
 
     local sectionDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     sectionDesc:SetPoint("TOPLEFT", sectionLabel, "BOTTOMLEFT", 0, -4)
-    sectionDesc:SetText("Keep selected action bars visible while in vehicle combat.")
+    sectionDesc:SetText("Keep selected action bars visible while in vehicle combat, including override bar states. Prevents mouseover fade from hiding bars during these encounters.")
 
     local widgets = {}
 

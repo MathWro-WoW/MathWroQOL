@@ -4,12 +4,15 @@ if not ElvUI then return end  -- skip all feature code if ElvUI is not loaded
 local VehicleBar = { name = "vehicleBar" }
 addon:RegisterFeature(VehicleBar)
 
--- Remove [vehicleui] tokens from a visibility condition string.
--- ElvUI visibility strings look like: "[vehicleui] hide; [petbattle] hide; show"
--- We want to strip the [vehicleui] token so the bar stays visible in vehicles.
+-- Remove vehicle-related hide tokens from a visibility condition string.
+-- ElvUI default: "[vehicleui][petbattle][overridebar] hide; show"
+-- In most vehicle encounters both [vehicleui] and [overridebar] are active,
+-- so we strip all three vehicle tokens to keep the bar visible.
 local function stripVehicleHide(condition)
     local result = condition
-    result = result:gsub("%[vehicleui%]", "")   -- remove the token
+    result = result:gsub("%[vehicleui%]", "")   -- vehicle UI active
+    result = result:gsub("%[overridebar%]", "") -- override action bar (common in vehicle encounters)
+    result = result:gsub("%[possessbar%]", "")  -- possess/mind-control bar
     result = result:gsub("[ \t]+;", ";")        -- clean extra spaces before semicolons
     result = result:gsub(";%s*;", ";")          -- collapse double semicolons
     result = result:gsub("^%s*;%s*", "")        -- trim any leading semicolon
@@ -19,6 +22,12 @@ end
 
 -- Guard flag to prevent our own RegisterStateDriver calls from re-triggering the hook.
 local applying = false
+
+-- Returns true whenever any of the vehicle-like conditions we strip from state drivers
+-- are active: override bar, vehicle UI, or possess bar.
+local function isVehicleLike()
+    return HasOverrideActionBar() or HasVehicleActionBar() or IsPossessBarVisible() or UnitExists("vehicle")
+end
 
 local function onStateDriverRegistered(frame, attribute, condition)
     if applying or attribute ~= "visibility" then return end
@@ -38,10 +47,85 @@ local function onStateDriverRegistered(frame, attribute, condition)
     end
 end
 
+-- Force all enabled mouseover bars fully visible. Called on vehicle-like entry.
+local function forceShowEnabledBars()
+    local E = ElvUI[1]
+    if not E then return end
+    local db = addon.db.vehicleBar
+    if not db or not db.enabled then return end
+    for i, enabled in pairs(db.bars) do
+        if enabled then
+            local bar = _G["ElvUI_Bar"..i]
+            if bar and bar.mouseover then
+                E:UIFrameFadeIn(bar, 0.2, bar:GetAlpha(), (bar.db and bar.db.alpha) or 1)
+            end
+        end
+    end
+end
+
+-- Fade out enabled mouseover bars back to hidden. Called on vehicle-like exit.
+local function forceHideEnabledBars()
+    local E = ElvUI[1]
+    if not E then return end
+    local db = addon.db.vehicleBar
+    if not db or not db.enabled then return end
+    for i, enabled in pairs(db.bars) do
+        if enabled then
+            local bar = _G["ElvUI_Bar"..i]
+            if bar and bar.mouseover then
+                E:UIFrameFadeOut(bar, 0.2, bar:GetAlpha(), 0)
+            end
+        end
+    end
+end
+
 function VehicleBar:Initialize()
-    -- Hook RegisterStateDriver globally. Our callback fires after ElvUI's call,
-    -- and we immediately re-register with the vehicleui condition stripped.
+    -- Hook RegisterStateDriver to strip vehicle hide conditions from visibility drivers.
     hooksecurefunc("RegisterStateDriver", onStateDriverRegistered)
+
+    local E = ElvUI[1]
+
+    -- Bars using ElvUI's individual mouseover fade are NOT covered by ElvUI's own
+    -- vehicle mouseLock (which only protects the global fade parent). Hook
+    -- UIFrameFadeOut to cancel any fade-out targeting a selected bar while in a vehicle.
+    if E and E.UIFrameFadeOut then
+        hooksecurefunc(E, "UIFrameFadeOut", function(self, frame, fadeTime, startAlpha, endAlpha)
+            if not isVehicleLike() then return end
+            local db = addon.db.vehicleBar
+            if not db or not db.enabled then return end
+            for i, enabled in pairs(db.bars) do
+                if enabled and frame == _G["ElvUI_Bar"..i] and frame.mouseover then
+                    -- Overwrite the fade-out with a fade-in before the FadeManager
+                    -- processes its first OnUpdate tick — effectively a no-op fade.
+                    E:UIFrameFadeIn(frame, 0.1, frame:GetAlpha(), (frame.db and frame.db.alpha) or 1)
+                    break
+                end
+            end
+        end)
+    end
+
+    -- Force bars visible whenever a vehicle-like state begins.
+    -- UPDATE_OVERRIDE_ACTIONBAR covers override bar entry (most common case).
+    -- UNIT_ENTERED_VEHICLE covers traditional vehicle UI.
+    -- Both events also fire on exit, so we guard with isVehicleLike().
+    local vehicleEvents = CreateFrame("Frame")
+    vehicleEvents:RegisterEvent("UPDATE_OVERRIDE_ACTIONBAR")
+    vehicleEvents:RegisterEvent("VEHICLE_UPDATE")
+    vehicleEvents:RegisterUnitEvent("UNIT_ENTERED_VEHICLE", "player")
+    vehicleEvents:SetScript("OnEvent", function(self, event)
+        if isVehicleLike() then
+            forceShowEnabledBars()
+        else
+            forceHideEnabledBars()
+        end
+    end)
+
+    -- Handle reload-while-already-in-vehicle-like-state.
+    if isVehicleLike() then
+        forceShowEnabledBars()
+    end
+
+    self:Apply()
 end
 
 -- Called when settings change. Triggers ElvUI to re-run PositionAndSizeBar on all
