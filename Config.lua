@@ -97,6 +97,45 @@ local function BuildGeneralPanel()
         end
     end)
 
+    -- ── CDM Button ────────────────────────────────────────────────────────────
+
+    local cdmLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    cdmLabel:SetPoint("TOPLEFT", resetBtn, "BOTTOMLEFT", 0, -24)
+    cdmLabel:SetText("CDM Button")
+
+    local cdmDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    cdmDesc:SetPoint("TOPLEFT", cdmLabel, "BOTTOMLEFT", 0, -4)
+    cdmDesc:SetText("Adds a CDM button to the Game Menu that opens the Cooldown Manager.")
+
+    local cdmEnabledCB = MakeCheckbox(panel, "Show CDM button in game menu", 16, -280,
+        function() return addon.db.cdmButton and addon.db.cdmButton.enabled end,
+        function(val)
+            if not addon.db.cdmButton then addon.db.cdmButton = {} end
+            addon.db.cdmButton.enabled = val
+            addon:NotifyFeature("cdmButton")
+        end
+    )
+
+    local slashNote = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    slashNote:SetPoint("TOPLEFT", cdmEnabledCB, "BOTTOMLEFT", 0, -8)
+    slashNote:SetText("Slash commands (requires /reload to take effect):")
+
+    local waCB = MakeCheckbox(panel, "Enable /wa command", 16, -330,
+        function() return addon.db.cdmButton and addon.db.cdmButton.slashWA end,
+        function(val)
+            if not addon.db.cdmButton then addon.db.cdmButton = {} end
+            addon.db.cdmButton.slashWA = val
+        end
+    )
+
+    local cmCB = MakeCheckbox(panel, "Enable /cm command", 16, -356,
+        function() return addon.db.cdmButton and addon.db.cdmButton.slashCM end,
+        function(val)
+            if not addon.db.cdmButton then addon.db.cdmButton = {} end
+            addon.db.cdmButton.slashCM = val
+        end
+    )
+
     return panel
 end
 
