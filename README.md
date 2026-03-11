@@ -16,7 +16,7 @@ Make the Escape menu freely draggable. Position is saved and restored on each lo
 Adds a "CDM" button to the Escape menu that directly opens the Cooldown Manager window (`CooldownViewerSettings`). Positioned between Shop and AddOns, and grouped below the ElvUI button when ElvUI is active. Also registers `/wa` and `/cm` chat commands as shortcuts. All three (button, `/wa`, `/cm`) can be toggled independently in the options panel.
 
 **Auction House Filters**
-Automatically pre-enables selected filters each time you open the Auction House. Two independent toggles in the options panel: "Current expansion only" (default on) and "Usable only" (default off). Filters are re-applied on every AH open so any in-session manual changes are reset.
+Automatically pre-enables selected filters each time you open the Auction House. Two independent toggles in the options panel: "Current expansion only" and "Usable only". Filters are re-applied on every AH open so any in-session manual changes are reset.
 
 ### ElvUI Plugins *(requires ElvUI)*
 
