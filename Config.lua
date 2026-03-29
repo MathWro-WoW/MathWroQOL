@@ -307,22 +307,57 @@ local function BuildElvUIPanel()
 
     local elvuiLoaded = ElvUI ~= nil
 
-    if not elvuiLoaded then
-        local notice = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        notice:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -12)
-        notice:SetTextColor(1, 0.3, 0.3)
-        notice:SetText("ElvUI is not loaded. These options are unavailable.")
+    -- Dark backdrop below the title
+    local bg = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+    bg:SetPoint("TOPLEFT", title, "BOTTOMLEFT", -6, -8)
+    bg:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -6, 6)
+    bg:SetBackdrop({
+        bgFile   = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        tile     = false,
+        edgeSize = 1,
+        insets   = { left = 1, right = 1, top = 1, bottom = 1 },
+    })
+    bg:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+    bg:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+    if ElvUI then
+        local E = ElvUI[1]
+        bg:SetBackdropColor(unpack(E.media.backdropfadecolor))
+        bg:SetBackdropBorderColor(unpack(E.media.bordercolor))
     end
+
+    local scrollFrame = CreateFrame("ScrollFrame", "MathWroQOL_ElvUIScroll", bg, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT",     bg, "TOPLEFT",     8,   -8)
+    scrollFrame:SetPoint("BOTTOMRIGHT", bg, "BOTTOMRIGHT", -28,  8)
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local cur = self:GetVerticalScroll()
+        local max = self:GetVerticalScrollRange()
+        self:SetVerticalScroll(math.max(0, math.min(max, cur - delta * 20)))
+    end)
+
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetSize(530, 900)
+    scrollFrame:SetScrollChild(scrollChild)
 
     -- ── Vehicle Bar Visibility ────────────────────────────────────────────────
 
-    local vbSep = MakeSeparator(panel, title, -32)
-
-    local sectionLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    sectionLabel:SetPoint("TOPLEFT", vbSep, "BOTTOMLEFT", 0, -10)
+    -- The "not loaded" notice anchors to scrollChild top; sectionLabel follows it.
+    -- When ElvUI is loaded, sectionLabel anchors directly to scrollChild top.
+    local sectionLabel = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     sectionLabel:SetText("Vehicle Bar Visibility")
 
-    local sectionDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    if not elvuiLoaded then
+        local notice = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        notice:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 8, -12)
+        notice:SetTextColor(1, 0.3, 0.3)
+        notice:SetText("ElvUI is not loaded. These options are unavailable.")
+        sectionLabel:SetPoint("TOPLEFT", notice, "BOTTOMLEFT", 0, -16)
+    else
+        sectionLabel:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 8, -12)
+    end
+
+    local sectionDesc = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     sectionDesc:SetPoint("TOPLEFT", sectionLabel, "BOTTOMLEFT", 0, -4)
     sectionDesc:SetWidth(500)
     sectionDesc:SetJustifyH("LEFT")
@@ -330,7 +365,7 @@ local function BuildElvUIPanel()
 
     local widgets = {}
 
-    local enabledCB = MakeCheckbox(panel, "Enable", 0, 0,
+    local enabledCB = MakeCheckbox(scrollChild, "Enable", 0, 0,
         function() return addon.db.vehicleBar and addon.db.vehicleBar.enabled end,
         function(val)
             if addon.db.vehicleBar then
@@ -343,14 +378,14 @@ local function BuildElvUIPanel()
     enabledCB:SetPoint("TOPLEFT", sectionDesc, "BOTTOMLEFT", 0, -12)
     widgets[#widgets + 1] = enabledCB
 
-    local barsLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    local barsLabel = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     barsLabel:SetPoint("TOPLEFT", enabledCB, "BOTTOMLEFT", 0, -8)
     barsLabel:SetText("Bars to keep visible:")
 
     local barRefs = {}
     for i = 1, 10 do
         local col = (i - 1) % 5
-        local cb = MakeCheckbox(panel, "Bar "..i, 0, 0,
+        local cb = MakeCheckbox(scrollChild, "Bar "..i, 0, 0,
             function()
                 return addon.db.vehicleBar and addon.db.vehicleBar.bars[i] == true
             end,
