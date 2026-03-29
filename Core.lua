@@ -17,6 +17,13 @@ local defaults = {
         currentExpansionOnly = false,
         usableOnly = false,
     },
+    combatLog = {
+        dungeon  = false,
+        raid     = false,
+        scenario = false,
+        pvp      = false,
+        arena    = false,
+    },
 }
 
 local function applyDefaults(target, source)
