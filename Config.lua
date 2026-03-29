@@ -181,6 +181,70 @@ local function BuildGeneralPanel()
     ahUsableCB:ClearAllPoints()
     ahUsableCB:SetPoint("TOPLEFT", ahExpCB, "BOTTOMLEFT", 0, -4)
 
+    -- ── Combat Logging ────────────────────────────────────────────────────────
+
+    local clSep = MakeSeparator(panel, ahUsableCB, -12)
+
+    local clLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    clLabel:SetPoint("TOPLEFT", clSep, "BOTTOMLEFT", 0, -10)
+    clLabel:SetText("Combat Logging")
+
+    local clDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    clDesc:SetPoint("TOPLEFT", clLabel, "BOTTOMLEFT", 0, -4)
+    clDesc:SetWidth(500)
+    clDesc:SetJustifyH("LEFT")
+    clDesc:SetText("Automatically start combat logging when entering selected instance types. Stops on exit. If you manually stop logging mid-instance, it stays off until the next instance.")
+
+    local clDungeonCB = MakeCheckbox(panel, "Dungeon (includes Mythic+)", 0, 0,
+        function() return addon.db.combatLog and addon.db.combatLog.dungeon end,
+        function(val)
+            if not addon.db.combatLog then addon.db.combatLog = {} end
+            addon.db.combatLog.dungeon = val
+        end
+    )
+    clDungeonCB:ClearAllPoints()
+    clDungeonCB:SetPoint("TOPLEFT", clDesc, "BOTTOMLEFT", 0, -8)
+
+    local clRaidCB = MakeCheckbox(panel, "Raid", 0, 0,
+        function() return addon.db.combatLog and addon.db.combatLog.raid end,
+        function(val)
+            if not addon.db.combatLog then addon.db.combatLog = {} end
+            addon.db.combatLog.raid = val
+        end
+    )
+    clRaidCB:ClearAllPoints()
+    clRaidCB:SetPoint("TOPLEFT", clDungeonCB, "BOTTOMLEFT", 0, -4)
+
+    local clScenarioCB = MakeCheckbox(panel, "Scenario", 0, 0,
+        function() return addon.db.combatLog and addon.db.combatLog.scenario end,
+        function(val)
+            if not addon.db.combatLog then addon.db.combatLog = {} end
+            addon.db.combatLog.scenario = val
+        end
+    )
+    clScenarioCB:ClearAllPoints()
+    clScenarioCB:SetPoint("TOPLEFT", clRaidCB, "BOTTOMLEFT", 0, -4)
+
+    local clPvpCB = MakeCheckbox(panel, "Battleground", 0, 0,
+        function() return addon.db.combatLog and addon.db.combatLog.pvp end,
+        function(val)
+            if not addon.db.combatLog then addon.db.combatLog = {} end
+            addon.db.combatLog.pvp = val
+        end
+    )
+    clPvpCB:ClearAllPoints()
+    clPvpCB:SetPoint("TOPLEFT", clScenarioCB, "BOTTOMLEFT", 0, -4)
+
+    local clArenaCB = MakeCheckbox(panel, "Arena", 0, 0,
+        function() return addon.db.combatLog and addon.db.combatLog.arena end,
+        function(val)
+            if not addon.db.combatLog then addon.db.combatLog = {} end
+            addon.db.combatLog.arena = val
+        end
+    )
+    clArenaCB:ClearAllPoints()
+    clArenaCB:SetPoint("TOPLEFT", clPvpCB, "BOTTOMLEFT", 0, -4)
+
     return panel
 end
 
