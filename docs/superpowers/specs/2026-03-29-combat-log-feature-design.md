@@ -78,7 +78,16 @@ function onZoneTransition()
     if db[key] and not manuallyDisabled:
         LoggingCombat(true)
         startedByAddon = true
+        print("[MathWro QOL] Combat logging started.")
 ```
+
+When stopping on instance exit:
+```
+    LoggingCombat(false)
+    print("[MathWro QOL] Combat logging stopped.")
+```
+
+No message is printed when a manual stop is detected (we didn't stop it — the user did).
 
 ---
 
