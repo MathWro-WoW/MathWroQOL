@@ -49,17 +49,50 @@ local function BuildGeneralPanel()
     title:SetPoint("TOPLEFT", 16, -16)
     title:SetText("General")
 
+    -- Dark backdrop below the title
+    local bg = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+    bg:SetPoint("TOPLEFT", title, "BOTTOMLEFT", -6, -8)
+    bg:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -6, 6)
+    bg:SetBackdrop({
+        bgFile   = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        tile     = false,
+        edgeSize = 1,
+        insets   = { left = 1, right = 1, top = 1, bottom = 1 },
+    })
+    bg:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+    bg:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+    if ElvUI then
+        local E = ElvUI[1]
+        bg:SetBackdropColor(unpack(E.media.backdropfadecolor))
+        bg:SetBackdropBorderColor(unpack(E.media.bordercolor))
+    end
+
+    local scrollFrame = CreateFrame("ScrollFrame", "MathWroQOL_GeneralScroll", bg, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT",     bg, "TOPLEFT",     8,   -8)
+    scrollFrame:SetPoint("BOTTOMRIGHT", bg, "BOTTOMRIGHT", -28,  8)
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local cur = self:GetVerticalScroll()
+        local max = self:GetVerticalScrollRange()
+        self:SetVerticalScroll(math.max(0, math.min(max, cur - delta * 20)))
+    end)
+
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetSize(530, 900)
+    scrollFrame:SetScrollChild(scrollChild)
+
     -- ── Game Menu Scale ───────────────────────────────────────────────────────
 
-    local gmLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    gmLabel:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -20)
+    local gmLabel = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    gmLabel:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 8, -12)
     gmLabel:SetText("Game Menu Scale")
 
-    local gmDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    local gmDesc = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     gmDesc:SetPoint("TOPLEFT", gmLabel, "BOTTOMLEFT", 0, -4)
     gmDesc:SetText("Scale the Escape menu. Default is 1.0.")
 
-    local slider = CreateFrame("Slider", "MathWroQOL_GameMenuSlider", panel, "OptionsSliderTemplate")
+    local slider = CreateFrame("Slider", "MathWroQOL_GameMenuSlider", scrollChild, "OptionsSliderTemplate")
     slider:SetPoint("TOPLEFT", gmDesc, "BOTTOMLEFT", 0, -16)
     slider:SetMinMaxValues(0.5, 2.0)
     slider:SetValueStep(0.05)
@@ -84,7 +117,7 @@ local function BuildGeneralPanel()
 
     -- ── Game Menu Dragging ────────────────────────────────────────────────────
 
-    local moveableCB = MakeCheckbox(panel, "Allow dragging", 16, -148,
+    local moveableCB = MakeCheckbox(scrollChild, "Allow dragging", 0, 0,
         function() return addon.db.gameMenu and addon.db.gameMenu.moveable == true end,
         function(val)
             if not addon.db.gameMenu then addon.db.gameMenu = {} end
@@ -92,8 +125,10 @@ local function BuildGeneralPanel()
             addon:NotifyFeature("gameMenu")
         end
     )
+    moveableCB:ClearAllPoints()
+    moveableCB:SetPoint("TOPLEFT", slider, "BOTTOMLEFT", 0, -16)
 
-    local resetBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    local resetBtn = CreateFrame("Button", nil, scrollChild, "UIPanelButtonTemplate")
     resetBtn:SetSize(120, 22)
     resetBtn:SetPoint("TOPLEFT", moveableCB, "BOTTOMLEFT", 0, -8)
     resetBtn:SetText("Reset Position")
@@ -108,17 +143,17 @@ local function BuildGeneralPanel()
 
     -- ── CDM Button ────────────────────────────────────────────────────────────
 
-    local cdmSep = MakeSeparator(panel, resetBtn, -12)
+    local cdmSep = MakeSeparator(scrollChild, resetBtn, -12)
 
-    local cdmLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local cdmLabel = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     cdmLabel:SetPoint("TOPLEFT", cdmSep, "BOTTOMLEFT", 0, -10)
     cdmLabel:SetText("CDM Button")
 
-    local cdmDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    local cdmDesc = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     cdmDesc:SetPoint("TOPLEFT", cdmLabel, "BOTTOMLEFT", 0, -4)
     cdmDesc:SetText("Adds a CDM button to the Game Menu that opens the Cooldown Manager.")
 
-    local cdmEnabledCB = MakeCheckbox(panel, "Show CDM button in game menu", 16, -280,
+    local cdmEnabledCB = MakeCheckbox(scrollChild, "Show CDM button in game menu", 0, 0,
         function() return addon.db.cdmButton and addon.db.cdmButton.enabled end,
         function(val)
             if not addon.db.cdmButton then addon.db.cdmButton = {} end
@@ -126,40 +161,46 @@ local function BuildGeneralPanel()
             addon:NotifyFeature("cdmButton")
         end
     )
+    cdmEnabledCB:ClearAllPoints()
+    cdmEnabledCB:SetPoint("TOPLEFT", cdmDesc, "BOTTOMLEFT", 0, -8)
 
-    local slashNote = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    local slashNote = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     slashNote:SetPoint("TOPLEFT", cdmEnabledCB, "BOTTOMLEFT", 0, -8)
     slashNote:SetText("Slash commands:")
 
-    local waCB = MakeCheckbox(panel, "Enable /wa command", 16, -330,
+    local waCB = MakeCheckbox(scrollChild, "Enable /wa command", 0, 0,
         function() return addon.db.cdmButton and addon.db.cdmButton.slashWA end,
         function(val)
             if not addon.db.cdmButton then addon.db.cdmButton = {} end
             addon.db.cdmButton.slashWA = val
         end
     )
+    waCB:ClearAllPoints()
+    waCB:SetPoint("TOPLEFT", slashNote, "BOTTOMLEFT", 0, -8)
 
-    local cmCB = MakeCheckbox(panel, "Enable /cm command", 16, -356,
+    local cmCB = MakeCheckbox(scrollChild, "Enable /cm command", 0, 0,
         function() return addon.db.cdmButton and addon.db.cdmButton.slashCM end,
         function(val)
             if not addon.db.cdmButton then addon.db.cdmButton = {} end
             addon.db.cdmButton.slashCM = val
         end
     )
+    cmCB:ClearAllPoints()
+    cmCB:SetPoint("TOPLEFT", waCB, "BOTTOMLEFT", 0, -4)
 
     -- ── Auction House Filters ─────────────────────────────────────────────────
 
-    local ahSep = MakeSeparator(panel, cmCB, -12)
+    local ahSep = MakeSeparator(scrollChild, cmCB, -12)
 
-    local ahLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local ahLabel = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     ahLabel:SetPoint("TOPLEFT", ahSep, "BOTTOMLEFT", 0, -10)
     ahLabel:SetText("Auction House Filters")
 
-    local ahDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    local ahDesc = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     ahDesc:SetPoint("TOPLEFT", ahLabel, "BOTTOMLEFT", 0, -4)
     ahDesc:SetText("Automatically enable selected filters each time you open the Auction House.")
 
-    local ahExpCB = MakeCheckbox(panel, "Auto-enable 'Current expansion only' filter", 16, 0,
+    local ahExpCB = MakeCheckbox(scrollChild, "Auto-enable 'Current expansion only' filter", 0, 0,
         function() return addon.db.auctionFilter and addon.db.auctionFilter.currentExpansionOnly end,
         function(val)
             if not addon.db.auctionFilter then addon.db.auctionFilter = {} end
@@ -170,7 +211,7 @@ local function BuildGeneralPanel()
     ahExpCB:ClearAllPoints()
     ahExpCB:SetPoint("TOPLEFT", ahDesc, "BOTTOMLEFT", 0, -8)
 
-    local ahUsableCB = MakeCheckbox(panel, "Auto-enable 'Usable only' filter", 16, 0,
+    local ahUsableCB = MakeCheckbox(scrollChild, "Auto-enable 'Usable only' filter", 0, 0,
         function() return addon.db.auctionFilter and addon.db.auctionFilter.usableOnly end,
         function(val)
             if not addon.db.auctionFilter then addon.db.auctionFilter = {} end
@@ -183,24 +224,23 @@ local function BuildGeneralPanel()
 
     -- ── Combat Logging ────────────────────────────────────────────────────────
 
-    local clSep = MakeSeparator(panel, ahUsableCB, -12)
+    local clSep = MakeSeparator(scrollChild, ahUsableCB, -12)
 
-    local clLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local clLabel = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     clLabel:SetPoint("TOPLEFT", clSep, "BOTTOMLEFT", 0, -10)
     clLabel:SetText("Combat Logging")
 
-    local clDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    local clDesc = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     clDesc:SetPoint("TOPLEFT", clLabel, "BOTTOMLEFT", 0, -4)
     clDesc:SetWidth(500)
     clDesc:SetJustifyH("LEFT")
     clDesc:SetText("Automatically start combat logging when entering selected instance types. Stops on exit. If you manually stop logging mid-instance, it stays off until the next instance.")
 
-    -- 2-column grid layout to keep content within the panel height.
     -- No NotifyFeature call needed: CombatLog:Apply() is a no-op; settings
     -- take effect on the next zone transition (PLAYER_ENTERING_WORLD / ZONE_CHANGED_NEW_AREA).
 
     -- Row 1: Dungeon | Raid
-    local clDungeonCB = MakeCheckbox(panel, "Dungeon (includes Mythic+)", 0, 0,
+    local clDungeonCB = MakeCheckbox(scrollChild, "Dungeon (includes Mythic+)", 0, 0,
         function() return addon.db.combatLog and addon.db.combatLog.dungeon end,
         function(val)
             if not addon.db.combatLog then addon.db.combatLog = {} end
@@ -210,7 +250,7 @@ local function BuildGeneralPanel()
     clDungeonCB:ClearAllPoints()
     clDungeonCB:SetPoint("TOPLEFT", clDesc, "BOTTOMLEFT", 0, -8)
 
-    local clRaidCB = MakeCheckbox(panel, "Raid", 0, 0,
+    local clRaidCB = MakeCheckbox(scrollChild, "Raid", 0, 0,
         function() return addon.db.combatLog and addon.db.combatLog.raid end,
         function(val)
             if not addon.db.combatLog then addon.db.combatLog = {} end
@@ -221,7 +261,7 @@ local function BuildGeneralPanel()
     clRaidCB:SetPoint("TOPLEFT", clDungeonCB, "TOPLEFT", 200, 0)
 
     -- Row 2: Scenario | Battleground
-    local clScenarioCB = MakeCheckbox(panel, "Scenario", 0, 0,
+    local clScenarioCB = MakeCheckbox(scrollChild, "Scenario", 0, 0,
         function() return addon.db.combatLog and addon.db.combatLog.scenario end,
         function(val)
             if not addon.db.combatLog then addon.db.combatLog = {} end
@@ -231,7 +271,7 @@ local function BuildGeneralPanel()
     clScenarioCB:ClearAllPoints()
     clScenarioCB:SetPoint("TOPLEFT", clDungeonCB, "BOTTOMLEFT", 0, -4)
 
-    local clPvpCB = MakeCheckbox(panel, "Battleground", 0, 0,
+    local clPvpCB = MakeCheckbox(scrollChild, "Battleground", 0, 0,
         function() return addon.db.combatLog and addon.db.combatLog.pvp end,
         function(val)
             if not addon.db.combatLog then addon.db.combatLog = {} end
@@ -242,7 +282,7 @@ local function BuildGeneralPanel()
     clPvpCB:SetPoint("TOPLEFT", clScenarioCB, "TOPLEFT", 200, 0)
 
     -- Row 3: Arena
-    local clArenaCB = MakeCheckbox(panel, "Arena", 0, 0,
+    local clArenaCB = MakeCheckbox(scrollChild, "Arena", 0, 0,
         function() return addon.db.combatLog and addon.db.combatLog.arena end,
         function(val)
             if not addon.db.combatLog then addon.db.combatLog = {} end
