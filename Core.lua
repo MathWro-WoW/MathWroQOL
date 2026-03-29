@@ -24,6 +24,9 @@ local defaults = {
         pvp      = false,
         arena    = false,
     },
+    editModeNudge = {
+        enabled = true,
+    },
 }
 
 local function applyDefaults(target, source)

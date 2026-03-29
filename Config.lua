@@ -422,6 +422,74 @@ local function BuildElvUIPanel()
     return panel
 end
 
+-- ── Edit Mode subpage ─────────────────────────────────────────────────────────
+
+local function BuildEditModePanel()
+    local panel = CreateFrame("Frame")
+    panel.name = "Edit Mode"
+
+    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetText("Edit Mode")
+
+    local bg = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+    bg:SetPoint("TOPLEFT", title, "BOTTOMLEFT", -6, -8)
+    bg:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -6, 6)
+    bg:SetBackdrop({
+        bgFile   = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        tile     = false,
+        edgeSize = 1,
+        insets   = { left = 1, right = 1, top = 1, bottom = 1 },
+    })
+    bg:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+    bg:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+    if ElvUI then
+        local E = ElvUI[1]
+        bg:SetBackdropColor(unpack(E.media.backdropfadecolor))
+        bg:SetBackdropBorderColor(unpack(E.media.bordercolor))
+    end
+
+    local scrollFrame = CreateFrame("ScrollFrame", "MathWroQOL_EditModeScroll", bg, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT",     bg, "TOPLEFT",     8,   -8)
+    scrollFrame:SetPoint("BOTTOMRIGHT", bg, "BOTTOMRIGHT", -28,  8)
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local cur = self:GetVerticalScroll()
+        local max = self:GetVerticalScrollRange()
+        self:SetVerticalScroll(math.max(0, math.min(max, cur - delta * 20)))
+    end)
+
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetSize(530, 900)
+    scrollFrame:SetScrollChild(scrollChild)
+
+    -- ── Nudge Overlay ─────────────────────────────────────────────────────────
+
+    local nudgeLabel = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    nudgeLabel:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 8, -12)
+    nudgeLabel:SetText("Nudge Overlay")
+
+    local nudgeDesc = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    nudgeDesc:SetPoint("TOPLEFT", nudgeLabel, "BOTTOMLEFT", 0, -4)
+    nudgeDesc:SetWidth(500)
+    nudgeDesc:SetJustifyH("LEFT")
+    nudgeDesc:SetText("Shows arrow buttons and exact coordinates when selecting a UI element in Edit Mode. Click arrows to nudge 1 px, Shift-click for 10 px.")
+
+    local nudgeCB = MakeCheckbox(scrollChild, "Enable nudge overlay", 0, 0,
+        function() return addon.db.editModeNudge and addon.db.editModeNudge.enabled end,
+        function(val)
+            if not addon.db.editModeNudge then addon.db.editModeNudge = {} end
+            addon.db.editModeNudge.enabled = val
+            addon:NotifyFeature("editModeNudge")
+        end
+    )
+    nudgeCB:ClearAllPoints()
+    nudgeCB:SetPoint("TOPLEFT", nudgeDesc, "BOTTOMLEFT", 0, -8)
+
+    return panel
+end
+
 -- ── Registration ──────────────────────────────────────────────────────────────
 
 local frame = CreateFrame("Frame")
@@ -430,14 +498,16 @@ frame:SetScript("OnEvent", function(self, event, arg1)
     if arg1 ~= "MathWroQOL" then return end
     self:UnregisterEvent("ADDON_LOADED")
 
-    local parentPanel  = BuildParentPanel()
-    local generalPanel = BuildGeneralPanel()
-    local elvuiPanel   = BuildElvUIPanel()
+    local parentPanel   = BuildParentPanel()
+    local generalPanel  = BuildGeneralPanel()
+    local elvuiPanel    = BuildElvUIPanel()
+    local editModePanel = BuildEditModePanel()
 
     if Settings and Settings.RegisterCanvasLayoutCategory then
         local parentCat = Settings.RegisterCanvasLayoutCategory(parentPanel, parentPanel.name)
-        Settings.RegisterCanvasLayoutSubcategory(parentCat, generalPanel, generalPanel.name)
-        Settings.RegisterCanvasLayoutSubcategory(parentCat, elvuiPanel,   elvuiPanel.name)
+        Settings.RegisterCanvasLayoutSubcategory(parentCat, generalPanel,  generalPanel.name)
+        Settings.RegisterCanvasLayoutSubcategory(parentCat, elvuiPanel,    elvuiPanel.name)
+        Settings.RegisterCanvasLayoutSubcategory(parentCat, editModePanel, editModePanel.name)
         Settings.RegisterAddOnCategory(parentCat)
 
         SLASH_MQOL1 = "/mqol"
@@ -449,6 +519,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         InterfaceOptions_AddCategory(parentPanel)
         InterfaceOptions_AddCategory(generalPanel, parentPanel)
         InterfaceOptions_AddCategory(elvuiPanel,   parentPanel)
+        InterfaceOptions_AddCategory(editModePanel, parentPanel)
 
         SLASH_MQOL1 = "/mqol"
         SlashCmdList["MQOL"] = function()

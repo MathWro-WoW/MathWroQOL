@@ -13,3 +13,4 @@ Features\GameMenu.lua
 Features\CDMButton.lua
 Features\AuctionFilter.lua
 Features\CombatLog.lua
+Features\EditModeNudge.lua
