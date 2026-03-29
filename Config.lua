@@ -195,8 +195,11 @@ local function BuildGeneralPanel()
     clDesc:SetJustifyH("LEFT")
     clDesc:SetText("Automatically start combat logging when entering selected instance types. Stops on exit. If you manually stop logging mid-instance, it stays off until the next instance.")
 
+    -- 2-column grid layout to keep content within the panel height.
     -- No NotifyFeature call needed: CombatLog:Apply() is a no-op; settings
     -- take effect on the next zone transition (PLAYER_ENTERING_WORLD / ZONE_CHANGED_NEW_AREA).
+
+    -- Row 1: Dungeon | Raid
     local clDungeonCB = MakeCheckbox(panel, "Dungeon (includes Mythic+)", 0, 0,
         function() return addon.db.combatLog and addon.db.combatLog.dungeon end,
         function(val)
@@ -215,8 +218,9 @@ local function BuildGeneralPanel()
         end
     )
     clRaidCB:ClearAllPoints()
-    clRaidCB:SetPoint("TOPLEFT", clDungeonCB, "BOTTOMLEFT", 0, -4)
+    clRaidCB:SetPoint("TOPLEFT", clDungeonCB, "TOPLEFT", 200, 0)
 
+    -- Row 2: Scenario | Battleground
     local clScenarioCB = MakeCheckbox(panel, "Scenario", 0, 0,
         function() return addon.db.combatLog and addon.db.combatLog.scenario end,
         function(val)
@@ -225,7 +229,7 @@ local function BuildGeneralPanel()
         end
     )
     clScenarioCB:ClearAllPoints()
-    clScenarioCB:SetPoint("TOPLEFT", clRaidCB, "BOTTOMLEFT", 0, -4)
+    clScenarioCB:SetPoint("TOPLEFT", clDungeonCB, "BOTTOMLEFT", 0, -4)
 
     local clPvpCB = MakeCheckbox(panel, "Battleground", 0, 0,
         function() return addon.db.combatLog and addon.db.combatLog.pvp end,
@@ -235,8 +239,9 @@ local function BuildGeneralPanel()
         end
     )
     clPvpCB:ClearAllPoints()
-    clPvpCB:SetPoint("TOPLEFT", clScenarioCB, "BOTTOMLEFT", 0, -4)
+    clPvpCB:SetPoint("TOPLEFT", clScenarioCB, "TOPLEFT", 200, 0)
 
+    -- Row 3: Arena
     local clArenaCB = MakeCheckbox(panel, "Arena", 0, 0,
         function() return addon.db.combatLog and addon.db.combatLog.arena end,
         function(val)
@@ -245,7 +250,7 @@ local function BuildGeneralPanel()
         end
     )
     clArenaCB:ClearAllPoints()
-    clArenaCB:SetPoint("TOPLEFT", clPvpCB, "BOTTOMLEFT", 0, -4)
+    clArenaCB:SetPoint("TOPLEFT", clScenarioCB, "BOTTOMLEFT", 0, -4)
 
     return panel
 end
