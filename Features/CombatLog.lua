@@ -21,7 +21,7 @@ local function onZoneTransition()
     local inInstance, instanceType = IsInInstance()
 
     if not inInstance then
-        if startedByAddon then
+        if startedByAddon and LoggingCombat() then
             LoggingCombat(false)
             print("[MathWro QOL] Combat logging stopped.")
         end
