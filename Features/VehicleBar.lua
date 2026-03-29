@@ -23,10 +23,21 @@ end
 -- Guard flag to prevent our own RegisterStateDriver calls from re-triggering the hook.
 local applying = false
 
--- Returns true whenever any of the vehicle-like conditions we strip from state drivers
--- are active: override bar, vehicle UI, or possess bar.
-local function isVehicleLike()
-    return HasOverrideActionBar() or HasVehicleActionBar() or IsPossessBarVisible() or UnitExists("vehicle")
+-- Returns true when an override or vehicle bar is active AND it has at least
+-- one populated action slot (filters out taxis, RP vehicles, etc.).
+local function isVehicleLikeWithAbilities()
+    if not (HasOverrideActionBar() or HasVehicleActionBar() or IsPossessBarVisible()) then
+        return false
+    end
+    local barIndex = GetOverrideBarIndex() or GetVehicleBarIndex()
+    if not barIndex then return false end
+    local baseSlot = (barIndex - 1) * NUM_ACTIONBAR_BUTTONS
+    for i = 1, NUM_ACTIONBAR_BUTTONS do
+        if HasAction(baseSlot + i) then
+            return true
+        end
+    end
+    return false
 end
 
 local function onStateDriverRegistered(frame, attribute, condition)
@@ -90,7 +101,7 @@ function VehicleBar:Initialize()
     -- UIFrameFadeOut to cancel any fade-out targeting a selected bar while in a vehicle.
     if E and E.UIFrameFadeOut then
         hooksecurefunc(E, "UIFrameFadeOut", function(self, frame, fadeTime, startAlpha, endAlpha)
-            if not isVehicleLike() then return end
+            if not isVehicleLikeWithAbilities() then return end
             local db = addon.db.vehicleBar
             if not db or not db.enabled then return end
             for i, enabled in pairs(db.bars) do
@@ -107,14 +118,13 @@ function VehicleBar:Initialize()
     -- Force bars visible on vehicle-like entry; fade them back out on exit.
     -- UPDATE_OVERRIDE_ACTIONBAR fires on both override bar entry and exit.
     -- UNIT_ENTERED_VEHICLE / UNIT_EXITED_VEHICLE cover traditional vehicle UI.
-    -- isVehicleLike() determines which direction to go.
     local vehicleEvents = CreateFrame("Frame")
     vehicleEvents:RegisterEvent("UPDATE_OVERRIDE_ACTIONBAR")
     vehicleEvents:RegisterEvent("VEHICLE_UPDATE")
     vehicleEvents:RegisterUnitEvent("UNIT_ENTERED_VEHICLE", "player")
     vehicleEvents:RegisterUnitEvent("UNIT_EXITED_VEHICLE", "player")
     vehicleEvents:SetScript("OnEvent", function(self, event)
-        if isVehicleLike() then
+        if isVehicleLikeWithAbilities() then
             forceShowEnabledBars()
         else
             forceHideEnabledBars()
@@ -122,7 +132,7 @@ function VehicleBar:Initialize()
     end)
 
     -- Handle reload-while-already-in-vehicle-like-state.
-    if isVehicleLike() then
+    if isVehicleLikeWithAbilities() then
         forceShowEnabledBars()
     end
 
