@@ -195,6 +195,8 @@ local function BuildGeneralPanel()
     clDesc:SetJustifyH("LEFT")
     clDesc:SetText("Automatically start combat logging when entering selected instance types. Stops on exit. If you manually stop logging mid-instance, it stays off until the next instance.")
 
+    -- No NotifyFeature call needed: CombatLog:Apply() is a no-op; settings
+    -- take effect on the next zone transition (PLAYER_ENTERING_WORLD / ZONE_CHANGED_NEW_AREA).
     local clDungeonCB = MakeCheckbox(panel, "Dungeon (includes Mythic+)", 0, 0,
         function() return addon.db.combatLog and addon.db.combatLog.dungeon end,
         function(val)
@@ -229,7 +231,7 @@ local function BuildGeneralPanel()
         function() return addon.db.combatLog and addon.db.combatLog.pvp end,
         function(val)
             if not addon.db.combatLog then addon.db.combatLog = {} end
-            addon.db.combatLog.pvp = val
+            addon.db.combatLog.pvp = val  -- IsInInstance() returns "pvp" for battlegrounds
         end
     )
     clPvpCB:ClearAllPoints()
