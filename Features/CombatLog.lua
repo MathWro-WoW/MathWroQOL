@@ -35,6 +35,11 @@ local function onZoneTransition()
         manuallyDisabled = true
     end
 
+    -- Skip if max-level-only is enabled and the player hasn't reached cap
+    if db.maxLevelOnly and UnitLevel("player") < GetMaxLevelForPlayerExpansion() then
+        return
+    end
+
     local key = instanceTypeToKey[instanceType]
     if key and db[key] and not manuallyDisabled and not LoggingCombat() then
         LoggingCombat(true)

@@ -292,6 +292,16 @@ local function BuildGeneralPanel()
     clArenaCB:ClearAllPoints()
     clArenaCB:SetPoint("TOPLEFT", clScenarioCB, "BOTTOMLEFT", 0, -4)
 
+    local clMaxLevelCB = MakeCheckbox(scrollChild, "Only at max level", 0, 0,
+        function() return addon.db.combatLog and addon.db.combatLog.maxLevelOnly end,
+        function(val)
+            if not addon.db.combatLog then addon.db.combatLog = {} end
+            addon.db.combatLog.maxLevelOnly = val
+        end
+    )
+    clMaxLevelCB:ClearAllPoints()
+    clMaxLevelCB:SetPoint("TOPLEFT", clArenaCB, "BOTTOMLEFT", 0, -8)
+
     return panel
 end
 

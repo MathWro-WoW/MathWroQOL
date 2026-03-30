@@ -18,11 +18,12 @@ local defaults = {
         usableOnly = false,
     },
     combatLog = {
-        dungeon  = false,
-        raid     = false,
-        scenario = false,
-        pvp      = false,
-        arena    = false,
+        dungeon      = false,
+        raid         = false,
+        scenario     = false,
+        pvp          = false,
+        arena        = false,
+        maxLevelOnly = false,
     },
     editModeNudge = {
         enabled = true,
