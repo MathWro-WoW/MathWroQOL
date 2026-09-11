@@ -25,7 +25,8 @@ lua tests/CombatTracker_TrinketExclusions_smoke.lua
 lua tests/CombatLog_smoke.lua
 lua tests/BuffHealthColor_smoke.lua
 lua tests/EditModeNudge_smoke.lua
-luac -p Features/*.lua tests/*.lua
+lua tests/ExternalTracker_smoke.lua
+luac -p Core.lua Config.lua Features/*.lua tests/*.lua
 ```
 
 Then validate in-game:
@@ -45,6 +46,8 @@ Then validate in-game:
 | `BuffHealthColor.lua` | With ElvUI, test configured spell IDs on player, target, party, and raid frames; verify restricted aura updates produce no Lua errors |
 | `EditModeNudge.lua` | Test native Edit Mode/LibEditMode and EllesmereUI Unlock Mode independently |
 | `CombatTracker.lua` | Enable in `/mqol`; enter combat; trigger a racial, Healthstone or potion, and on-use trinket; verify each cooldown starts immediately without restricted-value errors. Add a trinket ID to the exclusions field and verify its icon is hidden, then remove it and verify the icon returns |
+| `ExternalTracker.lua` | Enable the module and individual spells in `/mqol` → External Tracker. Have another player apply a selected external in combat; verify duration icon, selected sound, and both modes. Verify removal hides the icon/glow, disabled spells stay inactive, self-casts trigger, and missing sound packs do not replace sounds. In Edit Mode, verify the Power Infusion preview with no enabled spells, size/zoom/all glow choices, saved positioning, and that exiting or entering combat removes the preview without affecting real sound alerts |
+| Bloodlust (`ExternalTracker.lua`) | In the External Tracker submenu, enable Bloodlust Tracker with externals disabled, then test both together. Verify class variants and drums show one duration icon, expiry hides it despite Exhaustion/Sated, and either master toggle leaves the other tracker unaffected. Check its separate Edit Mode preview, size/zoom/glow, saved position, Reset Position, and combat-locked controls |
 | `Config.lua` | Run `/mqol`; verify provider-specific submenus, disabled dependency states, controls, and first-open layout |
 | `CVarSettings.lua` | Run `/mqol`; confirm Spell Queue Window leaves the current CVar unchanged until explicitly enabled, first activation captures that value without writing it, and only that captured or subsequently user-selected value is restored after `/reload` |
 

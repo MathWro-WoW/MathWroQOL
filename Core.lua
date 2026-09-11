@@ -157,6 +157,21 @@ local defaults = {
         enabled = false,
         ellesmereEnabled = false,
     },
+    externalTracker = {
+        enabled = false,
+        point = "CENTER", x = 0, y = 150,
+        iconSize = 40,
+        iconZoom = 8,
+        glowType = "none",
+        spells = {},
+    },
+    bloodlustTracker = {
+        enabled = false,
+        point = "CENTER", x = 0, y = 90,
+        iconSize = 40,
+        iconZoom = 8,
+        glowType = "none",
+    },
     combatTracker = {
         enabled = false,
         frames = {
