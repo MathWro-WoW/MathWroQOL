@@ -4,7 +4,7 @@
 ## Author: MathWro
 ## Version: @project-version@
 ## X-Curse-Project-ID: 1482222
-## OptionalDeps: ElvUI, EllesmereUI, EllesmereUIActionBars, EllesmereUIRaidFrames, Masque, CooldownManagerCentered
+## OptionalDeps: ElvUI, EllesmereUI, EllesmereUIActionBars, EllesmereUIRaidFrames, Masque, CooldownManagerCentered, LibSharedMedia-3.0, SharedMedia, SharedMedia_MyMedia
 ## SavedVariables: MathWroQOLDB
 
 Libs\LibStub\LibStub.lua
@@ -34,3 +34,4 @@ Features\CombatTracker.lua
 Features\CombatTracker_Racials.lua
 Features\CombatTracker_Trinkets.lua
 Features\CombatTracker_Consumables.lua
+Features\ExternalTracker.lua

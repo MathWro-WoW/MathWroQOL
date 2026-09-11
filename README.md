@@ -48,6 +48,22 @@ Each section can be positioned independently via Edit Mode (LibEditMode integrat
 **Customisation**
 Per-section icon width and height sliders. Stack counter and cooldown countdown text with independent font and size controls. Custom item tracking by item ID. Reorderable item display with drag-style up/down arrows showing Midnight-style rank quality icons. Optional Masque skinning integration.
 
+### External Tracker *(disabled by default)*
+
+Track buffs applied to you: Pain Suppression, Guardian Spirit, Ironbark, Life Cocoon, Blessing of Sacrifice, Blessing of Protection, Blessing of Spellwarding, Blessing of Freedom, Time Dilation, Power Infusion, and Innervate.
+
+Open **External Tracker** in `/mqol`, enable the module, then select and enable individual spells. Each spell independently supports **Icon with duration**, **Sound only**, or **Icon and sound**. Sound choices come from LibSharedMedia provided by your enabled addons, with a Preview Sound button. Select a sound explicitly; **None** is silent. Missing libraries or sound packs do not affect icons and never substitute another sound.
+
+Blizzard's secure Aura Slots manage icon visibility and remaining duration; native aura sound registrations play on buff application through the Master channel. Selected buffs include self-casts because the sound API cannot filter by caster. Settings are locked during combat.
+
+**Edit Mode appearance:** select External Tracker in Blizzard Edit Mode to move the row and adjust **Icon size** (20–80px), **Icon zoom** (0–30% cropped from each edge), and **Glow type** (None, Classic, Modern Proc, or Assisted Combat). These settings apply to all tracked icons. A Power Infusion example previews changes even when no spells are enabled; it disappears on exit and never triggers a sound. Glow defaults to None; the default 8% zoom preserves the previous icon crop. Reset Position remains in the submenu.
+
+### Bloodlust Tracker *(disabled by default)*
+
+In `/mqol` → **External Tracker**, enable **Bloodlust Tracker** for a separate duration icon. It works whether the external tracker is enabled or disabled. Bloodlust, Heroism, Time Warp, Fury of the Aspects, Primal Rage (including its alternate aura), legacy hunter equivalents, and drums through Void-touched Drums are recognized automatically. The icon shows the active buff and its remaining duration, not the Exhaustion/Sated lockout.
+
+Select **Bloodlust Tracker** in Blizzard Edit Mode to move its Bloodlust preview and adjust its own size, zoom, and glow. Position and appearance are independent of the external tracker; its Reset Position button is in the same submenu. Bloodlust tracking is icon-only and does not change external spell sounds.
+
 ### Edit Mode
 
 **Edit Mode Nudge**

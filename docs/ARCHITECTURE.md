@@ -54,6 +54,7 @@ Defined in `MathWroQOL.toc`:
 25. `Features\CombatTracker_Racials.lua`
 26. `Features\CombatTracker_Trinkets.lua`
 27. `Features\CombatTracker_Consumables.lua`
+28. `Features\ExternalTracker.lua`
 
 ---
 
@@ -130,6 +131,8 @@ Four surfaces to wire:
 | Edit Mode Nudge | `EditModeNudge.lua` | `editModeNudge` | Provider-split arrow buttons + coordinate display: `enabled` covers native Edit Mode/LibEditMode; `ellesmereEnabled` covers EllesmereUI Unlock Mode and is disabled by default |
 | Buff Health Color | `BuffHealthColor.lua` | `buffHealthColor` | ElvUI health bar recoloring through 12.1 secure Aura Slots for configured player-cast buffs such as Atonement, Lifebloom, Prayer of Mending, Riptide, Beacon of the Savior, Renewing Mist, and custom spell IDs. Aura presence and slot visibility stay engine-managed; each profile retains frame, color, and specialization filters. EllesmereUI Raid Frames already provides equivalent Health Bar Color indicators in its Buff Manager, so MathWroQOL does not duplicate that runtime |
 | Combat Tracker | `CombatTracker.lua` + 3 section files | `combatTracker` | Cooldown icon display system (racials, trinkets, consumables); trinkets honor the configured `frames.trinkets.excludedItems` set |
+| External Tracker | `ExternalTracker.lua` | `externalTracker` | Independently opt-in external buffs on the player; secure duration icons, native aura-triggered LibSharedMedia sounds, or both |
+| Bloodlust Tracker | `ExternalTracker.lua` | `bloodlustTracker` | Independent duration icon for Bloodlust variants and drums; shares the External Tracker submenu and runtime implementation |
 
 ---
 
@@ -174,6 +177,21 @@ addon.editModeNudge = EditModeNudge  -- in EditModeNudge.lua top-level
 
 ---
 
+## External Tracker
+
+`ExternalTracker.lua` exports `addon.externalTracker.spells` as the catalog consumed by Config.lua. The master switch defaults off; an absent numeric entry in `externalTracker.spells[spellID]` is disabled. Each configured entry stores `enabled`, `mode` (`icon`, `sound`, `both`), and a LibSharedMedia `sound` key.
+
+The same file registers `bloodlustTracker` through the private `registerTracker` function. Each registration owns its events, aura container, anchor, preview, sounds, and Edit Mode callbacks. Bloodlust defaults off with separate position/appearance settings; it has no per-spell settings or sound mode. One `HELPFUL` slot accepts the grouped `spellIDs` map, covering class buffs (including Primal Rage's alternate aura), legacy hunter variants, and drums through Void-touched Drums. Use buff IDs, not cast IDs or Exhaustion/Sated debuffs. Blizzard supplies the actual matching buff's icon and duration.
+
+- Icons use `CustomAuraContainerTemplate` on `player`, with one `HELPFUL` Aura Slot per selected icon spell. Blizzard owns visibility, duration cooldowns, and duration text. Lua arranges ordinary anchor frames from settings only; each aura button is anchored during initialization and never accessed afterward, because aura secrecy can deny access even outside combat. Lua never reads combat aura data or slot visibility.
+- Sounds use `C_UnitAuras.AddAuraSound(Enum.UnitAuraSoundTrigger.Added, info)` with the selected media's file path or file ID. Keep unchanged registrations; remove obsolete registrations on mode changes, spell disable, or master disable. No LibSharedMedia library or missing media means no sound, not a substitute.
+- Native sounds cannot filter by caster, so both outputs include self-cast instances of the listed buffs. This is an incoming buff-duration tracker, not a tracker of other players' cooldown availability.
+- Config controls are combat-gated; enabled runtime changes requested during combat are deferred to `PLAYER_REGEN_ENABLED`. Disabled runtime unregisters its events and media callback, removes sounds, stops glows, and disables/hides its containers. The ordinary Edit Mode anchor is created on enable; Blizzard_AuraContainer and aura slots still load only when an icon spell is enabled.
+- LibEditMode's frame settings own each tracker's `iconSize`, `iconZoom` (percentage cropped per edge), and `glowType` controls. Its `enter`/`exit` callbacks show/hide an ordinary preview (Power Infusion for externals; Bloodlust for bloodlust), independent of spell enablement and sound registrations. Real icons are hidden during editing, then restored; preview frames and glow textures are reused.
+- Glow styles use native looping FlipBook animations (Classic, Modern Proc, Assisted Combat), not Lua animation drivers. Their owned child frames inherit engine-managed aura visibility. Appearance updates use retained references to addon-owned textures/frames only; they never re-access the restricted AuraButton.
+
+---
+
 ## Config.lua Panels
 
 Settings panels registered via `Settings.RegisterCanvasLayoutCategory` / `Settings.RegisterCanvasLayoutSubcategory` (TWW API), with fallback to `InterfaceOptions_AddCategory`:
@@ -182,6 +200,7 @@ Settings panels registered via `Settings.RegisterCanvasLayoutCategory` / `Settin
   - **General** — GameMenu scaling / drag / reset position; CombatLog instance toggles + level filter
   - **CVars and Settings** — optional CVar enforcement such as maximum camera distance
   - **Combat Tracker** — master enable; per-section collapsible blocks (Racials, Trinkets, Consumables)
+  - **External Tracker** — external master enable; selected-spell enable, icon/sound/both mode and SharedMedia sound preview; independent Bloodlust Tracker toggle; separate position resets and guidance for each tracker's Edit Mode appearance controls
   - **ElvUI** — ElvUI Vehicle Bar visibility and Buff Health Color controls; all controls disabled when ElvUI is absent
   - **EllesmereUI** — EllesmereUI Action Bars visibility, native Raid Frames Buff Manager guidance, and the optional Unlock Mode Nudge toggle; controls disabled when the required module is absent
   - **CDM Plugins** — CooldownManagerCentered compatibility options such as Masque skinning

@@ -3143,6 +3143,212 @@ local function BuildCombatTrackerPanel()
     return panel
 end
 
+local function BuildExternalTrackerPanel()
+    local panel = CreateFrame("Frame")
+    panel.name = "External Tracker"
+    local sc = MakePanelScaffold(panel, panel.name, "MathWroQOL_ExternalScroll")
+    local root = CreateFrame("Frame", nil, sc)
+    root:SetSize(1, 1)
+    root:SetPoint("TOPLEFT", sc, "TOPLEFT", 8, -12)
+
+    local topCard, topContent = MakeCard(sc, root, panel.name,
+        "Track external buffs on yourself. Enable the tracker, then opt into each spell below. All spells start disabled.")
+    local refresh
+    local master = MakeCheckbox(topContent, "Enable External Tracker", 12, -2,
+        function() return addon.db.externalTracker.enabled end,
+        function(value)
+            if InCombatLockdown() then return end
+            addon.db.externalTracker.enabled = value
+            addon:NotifyFeature("externalTracker")
+            refresh()
+        end)
+    local combatNote = topContent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    combatNote:SetPoint("TOPLEFT", master, "BOTTOMLEFT", 4, -8)
+    combatNote:SetWidth(460)
+    combatNote:SetJustifyH("LEFT")
+    combatNote:SetText("Settings are locked during combat. Sounds play when the buff is applied, not when the caster's cooldown becomes ready.")
+    topCard:SetBottomWidget(combatNote, 12)
+
+    local spellCard, spellContent = MakeCard(sc, topCard, "Spells",
+        "Choose a spell to edit its independent settings. Selected buffs also include self-casts: Blizzard's sound API cannot filter by caster.")
+    local selected = addon.externalTracker.spells[1].spellID
+    local defaultSettings = { enabled = false, mode = "icon", sound = "None" }
+    local function getSettings()
+        return addon.db.externalTracker.spells[selected] or defaultSettings
+    end
+    local function setField(field, value)
+        local db = addon.db.externalTracker
+        if not db.enabled or InCombatLockdown() then return end
+        if not db.spells[selected] then
+            db.spells[selected] = { enabled = false, mode = "icon", sound = "None" }
+        end
+        db.spells[selected][field] = value
+        refresh()
+    end
+    local spellOptions = {}
+    for _, spell in ipairs(addon.externalTracker.spells) do
+        local info = C_Spell.GetSpellInfo(spell.spellID)
+        spellOptions[#spellOptions + 1] = {
+            label = info and info.name or spell.label,
+            value = spell.spellID,
+            icon = info and info.iconID,
+        }
+    end
+    local spellDropdown = MakeDropdown(spellContent, spellOptions,
+        function() return selected end,
+        function(value) selected = value; refresh() end, "externalTracker")
+    spellDropdown:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 12, -2)
+    spellDropdown:SetDropdownWidth(300)
+
+    local spellEnable = MakeCheckbox(spellContent, "Track this spell", 12, -40,
+        function() return getSettings().enabled end,
+        function(value)
+            setField("enabled", value)
+            addon:NotifyFeature("externalTracker")
+        end)
+    local detailBody = CreateFrame("Frame", nil, spellContent)
+    detailBody:SetPoint("TOPLEFT", spellEnable, "BOTTOMLEFT", 4, -12)
+    detailBody:SetSize(460, 180)
+
+    local modeLabel = detailBody:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    modeLabel:SetPoint("TOPLEFT")
+    modeLabel:SetText("Display mode")
+    local modeDropdown = MakeDropdown(detailBody, {
+        { label = "Icon with duration", value = "icon" },
+        { label = "Sound only", value = "sound" },
+        { label = "Icon and sound", value = "both" },
+    }, function() return getSettings().mode end,
+        function(value) setField("mode", value) end, "externalTracker")
+    modeDropdown:SetPoint("TOPLEFT", modeLabel, "BOTTOMLEFT", 0, -6)
+    modeDropdown:SetDropdownWidth(300)
+
+    local soundBody = CreateFrame("Frame", nil, detailBody)
+    soundBody:SetPoint("TOPLEFT", modeDropdown, "BOTTOMLEFT", 0, -14)
+    soundBody:SetSize(460, 94)
+    local soundLabel = soundBody:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    soundLabel:SetPoint("TOPLEFT")
+    soundLabel:SetText("SharedMedia sound")
+    local soundDropdown = MakeDropdown(soundBody, {},
+        function() return getSettings().sound end,
+        function(value) setField("sound", value) end, "externalTracker")
+    soundDropdown:SetPoint("TOPLEFT", soundLabel, "BOTTOMLEFT", 0, -6)
+    soundDropdown:SetDropdownWidth(300)
+    local preview = CreateFrame("Button", nil, soundBody, "UIPanelButtonTemplate")
+    preview:SetSize(140, 22)
+    preview:SetPoint("TOPLEFT", soundDropdown, "BOTTOMLEFT", 0, -8)
+    preview:SetText("Preview Sound")
+    local S = ElvSkin()
+    if S then S:HandleButton(preview) end
+    preview:SetScript("OnClick", function()
+        local settings = getSettings()
+        if InCombatLockdown() or not addon.db.externalTracker.enabled or not settings.enabled
+            or settings.mode == "icon" or settings.sound == "None" then return end
+        local media = LibStub and LibStub("LibSharedMedia-3.0", true)
+        local sound = media and media:Fetch("sound", settings.sound, true)
+        if sound and sound ~= "" and sound ~= 1 then PlaySoundFile(sound, "Master") end
+    end)
+    local mediaNote = spellContent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    mediaNote:SetPoint("TOPLEFT", detailBody, "BOTTOMLEFT", 0, -8)
+    mediaNote:SetWidth(460)
+    mediaNote:SetJustifyH("LEFT")
+    spellCard:SetBottomWidget(mediaNote, 12)
+
+    local layoutCard, layoutContent = MakeCard(sc, spellCard, "Icon appearance",
+        "Open Blizzard Edit Mode and select External Tracker to change icon size, zoom, and glow. A Power Infusion example previews these settings while you move the row, even with no spells enabled.")
+    local reset = CreateFrame("Button", nil, layoutContent, "UIPanelButtonTemplate")
+    reset:SetPoint("TOPLEFT", layoutContent, "TOPLEFT", 12, -2)
+    reset:SetSize(140, 22)
+    reset:SetText("Reset Position")
+    if S then S:HandleButton(reset) end
+    reset:SetScript("OnClick", function()
+        local db = addon.db.externalTracker
+        if InCombatLockdown() or not db.enabled then return end
+        db.point, db.x, db.y = "CENTER", 0, 150
+        addon:NotifyFeature("externalTracker")
+    end)
+    layoutCard:SetBottomWidget(reset, 12)
+
+    local bloodlustCard, bloodlustContent = MakeCard(sc, layoutCard, "Bloodlust Tracker",
+        "Show active Bloodlust, Heroism, Time Warp, Primal Rage, Fury of the Aspects, and drums with their remaining duration in a separate icon. Works with External Tracker disabled. Use Edit Mode for its own position, size, zoom, and glow.")
+    local bloodlustMaster = MakeCheckbox(bloodlustContent, "Enable Bloodlust Tracker", 12, -2,
+        function() return addon.db.bloodlustTracker.enabled end,
+        function(value)
+            if InCombatLockdown() then return end
+            addon.db.bloodlustTracker.enabled = value
+            addon:NotifyFeature("bloodlustTracker")
+            refresh()
+        end)
+    local bloodlustReset = CreateFrame("Button", nil, bloodlustContent, "UIPanelButtonTemplate")
+    bloodlustReset:SetPoint("TOPLEFT", bloodlustMaster, "BOTTOMLEFT", 4, -12)
+    bloodlustReset:SetSize(140, 22)
+    bloodlustReset:SetText("Reset Position")
+    if S then S:HandleButton(bloodlustReset) end
+    bloodlustReset:SetScript("OnClick", function()
+        local db = addon.db.bloodlustTracker
+        if InCombatLockdown() or not db.enabled then return end
+        db.point, db.x, db.y = "CENTER", 0, 90
+        addon:NotifyFeature("bloodlustTracker")
+    end)
+    bloodlustCard:SetBottomWidget(bloodlustReset, 12)
+
+    refresh = function()
+        local editable = not InCombatLockdown()
+        local active = editable and addon.db.externalTracker.enabled
+        local settings = getSettings()
+        local media = LibStub and LibStub("LibSharedMedia-3.0", true)
+        local options = { { label = "None", value = "None" } }
+        local found = settings.sound == "None"
+        if media then
+            for _, name in ipairs(media:List("sound") or {}) do
+                local sound = media:Fetch("sound", name, true)
+                if name ~= "None" and sound and sound ~= "" and sound ~= 1 then
+                    options[#options + 1] = { label = name, value = name }
+                    if name == settings.sound then found = true end
+                end
+            end
+        end
+        if not found then
+            options[#options + 1] = { label = settings.sound .. " (unavailable)", value = settings.sound }
+        end
+        soundDropdown:SetOptions(options)
+        master:Refresh()
+        spellEnable:Refresh()
+        modeDropdown:Refresh()
+        master:SetEnabled(editable)
+        master:SetAlpha(editable and 1 or 0.4)
+        SetChildrenEnabled(spellContent, active)
+        SetChildrenEnabled(detailBody, active and settings.enabled)
+        local wantsSound = settings.mode == "sound" or settings.mode == "both"
+        SetChildrenEnabled(soundBody, active and settings.enabled and wantsSound and media ~= nil)
+        local sound = media and settings.sound ~= "None" and media:Fetch("sound", settings.sound, true)
+        preview:SetEnabled(active and settings.enabled and wantsSound and sound ~= nil and sound ~= false and sound ~= "" and sound ~= 1)
+        SetChildrenEnabled(layoutContent, active)
+        bloodlustMaster:Refresh()
+        bloodlustMaster:SetEnabled(editable)
+        bloodlustMaster:SetAlpha(editable and 1 or 0.4)
+        bloodlustReset:SetEnabled(editable and addon.db.bloodlustTracker.enabled)
+        bloodlustReset:SetAlpha(editable and addon.db.bloodlustTracker.enabled and 1 or 0.4)
+        if not media then
+            mediaNote:SetText("Sound choices require an enabled addon providing LibSharedMedia-3.0, such as ElvUI, EllesmereUI, or SharedMedia. Icon tracking works without it.")
+        elseif not found then
+            mediaNote:SetText("The saved sound is unavailable. Enable its sound-pack addon or choose another sound. No replacement sound will play.")
+        else
+            mediaNote:SetText("Choose a sound from your enabled addons. None is silent. Playback uses the Master sound channel.")
+        end
+        spellCard:SetBottomWidget(mediaNote, 12)
+    end
+    soundDropdown:HookScript("OnMouseDown", refresh)
+    panel:HookScript("OnShow", refresh)
+    panel:RegisterEvent("PLAYER_REGEN_DISABLED")
+    panel:RegisterEvent("PLAYER_REGEN_ENABLED")
+    panel:RegisterEvent("ADDON_LOADED")
+    panel:SetScript("OnEvent", function()
+        if panel:IsShown() then refresh() end
+    end)
+    refresh()
+    return panel
+end
+
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:SetScript("OnEvent", function(self, event, arg1)
@@ -3154,6 +3360,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
     local combatLogPanel = BuildCombatLogPanel()
     local cvarsAndSettingsPanel = BuildCVarsAndSettingsPanel()
     local combatTrackerPanel = BuildCombatTrackerPanel()
+    local externalTrackerPanel = BuildExternalTrackerPanel()
     local elvuiPanel = BuildUIIntegrationsPanel("elvui")
     local ellesmereUIPanel = BuildUIIntegrationsPanel("ellesmere")
     local cdmPluginsPanel = BuildCDMPluginsPanel()
@@ -3165,6 +3372,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         Settings.RegisterCanvasLayoutSubcategory(parentCat, combatLogPanel, combatLogPanel.name)
         Settings.RegisterCanvasLayoutSubcategory(parentCat, cvarsAndSettingsPanel, cvarsAndSettingsPanel.name)
         Settings.RegisterCanvasLayoutSubcategory(parentCat, combatTrackerPanel, combatTrackerPanel.name)
+        Settings.RegisterCanvasLayoutSubcategory(parentCat, externalTrackerPanel, externalTrackerPanel.name)
         Settings.RegisterCanvasLayoutSubcategory(parentCat, elvuiPanel, elvuiPanel.name)
         Settings.RegisterCanvasLayoutSubcategory(parentCat, ellesmereUIPanel, ellesmereUIPanel.name)
         Settings.RegisterCanvasLayoutSubcategory(parentCat, cdmPluginsPanel, cdmPluginsPanel.name)
@@ -3182,6 +3390,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         InterfaceOptions_AddCategory(combatLogPanel, parentPanel)
         InterfaceOptions_AddCategory(cvarsAndSettingsPanel, parentPanel)
         InterfaceOptions_AddCategory(combatTrackerPanel, parentPanel)
+        InterfaceOptions_AddCategory(externalTrackerPanel, parentPanel)
         InterfaceOptions_AddCategory(elvuiPanel, parentPanel)
         InterfaceOptions_AddCategory(ellesmereUIPanel, parentPanel)
         InterfaceOptions_AddCategory(cdmPluginsPanel, parentPanel)
