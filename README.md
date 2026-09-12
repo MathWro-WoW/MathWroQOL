@@ -52,7 +52,7 @@ Per-section icon width and height sliders. Stack counter and cooldown countdown 
 
 Track buffs applied to you: Pain Suppression, Guardian Spirit, Ironbark, Life Cocoon, Blessing of Sacrifice, Blessing of Protection, Blessing of Spellwarding, Blessing of Freedom, Time Dilation, Power Infusion, and Innervate.
 
-Open **External Tracker** in `/mqol`, enable the module, then select and enable individual spells. Each spell independently supports **Icon with duration**, **Sound only**, or **Icon and sound**. Sound choices come from LibSharedMedia provided by your enabled addons, with a Preview Sound button. Select a sound explicitly; **None** is silent. Missing libraries or sound packs do not affect icons and never substitute another sound.
+Open **External Tracker** in `/mqol`, enable the module, then select and enable individual spells. Each spell independently supports **Icon with duration**, **Sound only**, or **Icon and sound**. Sound choices come from LibSharedMedia provided by your enabled addons, with a Preview Sound button. The dropdown scrolls through long lists and picks up newly registered sounds whenever it opens. Select a sound explicitly; **None** is silent. Missing libraries or sound packs do not affect icons and never substitute another sound.
 
 Blizzard's secure Aura Slots manage icon visibility and remaining duration; native aura sound registrations play on buff application through the Master channel. Selected buffs include self-casts because the sound API cannot filter by caster. Settings are locked during combat.
 

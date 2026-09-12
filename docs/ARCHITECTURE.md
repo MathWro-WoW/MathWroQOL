@@ -222,7 +222,7 @@ All are `local function` defined in `Config.lua`. Not global.
 | `MakeSeparator` | `(parent, anchor, offsetY)` | 1px horizontal line (Frame-wrapped, not bare Texture — see pitfalls) |
 | `MakeCheckbox` | `(parent, label, x, y, getValue, setValue)` | Toggle checkbox with ElvUI skin support |
 | `MakeSliderWithInput` | `(parent, label, min, max, get, set)` | Slider + input box with internal sync guard |
-| `MakeDropdown` | `(parent, options, getValue, setValue, notifyFeature)` | Dropdown; options are `{ label, value, icon }` tables and may include `{ label, action }` rows; optional feature notify name defaults to `combatTracker` |
+| `MakeDropdown` | `(parent, options, getValue, setValue, notifyFeature)` | Dropdown; `options` is a list or a function returning it during menu generation. Entries are `{ label, value, icon }` tables or `{ label, action }` rows; optional feature notify name defaults to `combatTracker` |
 | `MakeCollapsibleSection` | `(parent, title, isExpanded)` | Expandable section with header arrow |
 | `ApplyFrameBackdrop` | `(frame, useFadeColor)` | Backdrop with white borders; uses ElvUI colors when loaded |
 | `SetChildrenEnabled` | `(container, enabled)` | Recursively enables/disables and fades all child widgets |
@@ -237,6 +237,7 @@ All are `local function` defined in `Config.lua`. Not global.
 - **MakeCollapsibleSection arrows**: Use `Soulbinds_Collection_CategoryHeader_Expand` / `Collapse` atlas textures. WoW's default fonts lack `▸`/`▾`.
 - **Always `ClearAllPoints()` before `SetPoint()`** on reused/repositioned widgets.
 - **FontStrings that may wrap**: set `SetWidth()` and `SetJustifyH("LEFT")` explicitly.
+- **Long dropdown lists**: opt into native scrolling with `rootDescription:SetScrollMode(...)` in `MakeDropdown`; screen clamping alone cannot expose off-screen choices. Supply changing lists through an options function. `Refresh` closes an open menu before regenerating: replacing its description otherwise leaves the scroll provider pointing at recycled rows, causing overlap. An `OnMouseDown` hook runs after native menu opening, so it is too late to refresh choices safely.
 - Controls should mutate `addon.db.<feature>` then call `addon:NotifyFeature("<name>")` to push the change back to the feature.
 
 ---

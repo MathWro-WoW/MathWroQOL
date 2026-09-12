@@ -26,6 +26,7 @@ lua tests/CombatLog_smoke.lua
 lua tests/BuffHealthColor_smoke.lua
 lua tests/EditModeNudge_smoke.lua
 lua tests/ExternalTracker_smoke.lua
+lua tests/Config_Dropdown_smoke.lua
 luac -p Core.lua Config.lua Features/*.lua tests/*.lua
 ```
 

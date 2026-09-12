@@ -404,6 +404,7 @@ local _dropdownCount = 0
 local function MakeDropdown(parent, options, getValue, setValue, notifyFeature)
     _dropdownCount = _dropdownCount + 1
     notifyFeature = notifyFeature or "combatTracker"
+    local optionSource = options
 
     local btn = CreateFrame(
         "DropdownButton",
@@ -441,6 +442,8 @@ local function MakeDropdown(parent, options, getValue, setValue, notifyFeature)
     end
 
     btn:SetupMenu(function(owner, rootDescription)
+        options = type(optionSource) == "function" and optionSource() or optionSource
+        rootDescription:SetScrollMode(320)
         for _, option in ipairs(options) do
             local label = formatOptionLabel(option)
             if option.action then
@@ -466,6 +469,8 @@ local function MakeDropdown(parent, options, getValue, setValue, notifyFeature)
     end)
 
     function btn:Refresh()
+        -- Closing clears the native scroll provider before its pooled rows change.
+        if self:IsMenuOpen() then self:CloseMenu() end
         if self.GenerateMenu then
             self:GenerateMenu()
         end
@@ -473,7 +478,7 @@ local function MakeDropdown(parent, options, getValue, setValue, notifyFeature)
     end
 
     function btn:SetOptions(newOptions)
-        options = newOptions or {}
+        optionSource = newOptions or {}
         self:Refresh()
     end
 
@@ -3228,7 +3233,26 @@ local function BuildExternalTrackerPanel()
     local soundLabel = soundBody:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     soundLabel:SetPoint("TOPLEFT")
     soundLabel:SetText("SharedMedia sound")
-    local soundDropdown = MakeDropdown(soundBody, {},
+    local function getSoundOptions()
+        local settings = getSettings()
+        local media = LibStub and LibStub("LibSharedMedia-3.0", true)
+        local options = { { label = "None", value = "None" } }
+        local found = settings.sound == "None"
+        if media then
+            for _, name in ipairs(media:List("sound") or {}) do
+                local sound = media:Fetch("sound", name, true)
+                if name ~= "None" and sound and sound ~= "" and sound ~= 1 then
+                    options[#options + 1] = { label = name, value = name }
+                    if name == settings.sound then found = true end
+                end
+            end
+        end
+        if not found then
+            options[#options + 1] = { label = settings.sound .. " (unavailable)", value = settings.sound }
+        end
+        return options
+    end
+    local soundDropdown = MakeDropdown(soundBody, getSoundOptions,
         function() return getSettings().sound end,
         function(value) setField("sound", value) end, "externalTracker")
     soundDropdown:SetPoint("TOPLEFT", soundLabel, "BOTTOMLEFT", 0, -6)
@@ -3296,21 +3320,7 @@ local function BuildExternalTrackerPanel()
         local active = editable and addon.db.externalTracker.enabled
         local settings = getSettings()
         local media = LibStub and LibStub("LibSharedMedia-3.0", true)
-        local options = { { label = "None", value = "None" } }
-        local found = settings.sound == "None"
-        if media then
-            for _, name in ipairs(media:List("sound") or {}) do
-                local sound = media:Fetch("sound", name, true)
-                if name ~= "None" and sound and sound ~= "" and sound ~= 1 then
-                    options[#options + 1] = { label = name, value = name }
-                    if name == settings.sound then found = true end
-                end
-            end
-        end
-        if not found then
-            options[#options + 1] = { label = settings.sound .. " (unavailable)", value = settings.sound }
-        end
-        soundDropdown:SetOptions(options)
+        soundDropdown:Refresh()
         master:Refresh()
         spellEnable:Refresh()
         modeDropdown:Refresh()
@@ -3321,7 +3331,8 @@ local function BuildExternalTrackerPanel()
         local wantsSound = settings.mode == "sound" or settings.mode == "both"
         SetChildrenEnabled(soundBody, active and settings.enabled and wantsSound and media ~= nil)
         local sound = media and settings.sound ~= "None" and media:Fetch("sound", settings.sound, true)
-        preview:SetEnabled(active and settings.enabled and wantsSound and sound ~= nil and sound ~= false and sound ~= "" and sound ~= 1)
+        local hasSound = sound ~= nil and sound ~= false and sound ~= "" and sound ~= 1
+        preview:SetEnabled(active and settings.enabled and wantsSound and hasSound)
         SetChildrenEnabled(layoutContent, active)
         bloodlustMaster:Refresh()
         bloodlustMaster:SetEnabled(editable)
@@ -3330,14 +3341,13 @@ local function BuildExternalTrackerPanel()
         bloodlustReset:SetAlpha(editable and addon.db.bloodlustTracker.enabled and 1 or 0.4)
         if not media then
             mediaNote:SetText("Sound choices require an enabled addon providing LibSharedMedia-3.0, such as ElvUI, EllesmereUI, or SharedMedia. Icon tracking works without it.")
-        elseif not found then
+        elseif settings.sound ~= "None" and not hasSound then
             mediaNote:SetText("The saved sound is unavailable. Enable its sound-pack addon or choose another sound. No replacement sound will play.")
         else
             mediaNote:SetText("Choose a sound from your enabled addons. None is silent. Playback uses the Master sound channel.")
         end
         spellCard:SetBottomWidget(mediaNote, 12)
     end
-    soundDropdown:HookScript("OnMouseDown", refresh)
     panel:HookScript("OnShow", refresh)
     panel:RegisterEvent("PLAYER_REGEN_DISABLED")
     panel:RegisterEvent("PLAYER_REGEN_ENABLED")
