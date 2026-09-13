@@ -70,6 +70,8 @@ Defined in `MathWroQOL.toc`:
 
 On `PLAYER_LOGIN`, iterates registered features and calls `feature:Initialize()` on each.
 
+`addon:ApplyIconGlow(display, host, glowType, width, height)` shares native Classic, Modern Proc, and Assisted Combat flipbooks between Heroic Strike and External/Bloodlust Tracker. Pass an addon-owned host and retain `display` for cached animation state. Width and height are independent rendered dimensions; `"none"` stops and hides an existing effect without allocating one. Callers own feature/visibility gating, and no aura button is accessed by the helper.
+
 ---
 
 ## Feature Contract
@@ -140,13 +142,15 @@ Four surfaces to wire:
 
 `HeroicStrike.lua` checks `C_SpellBook.IsSpellInSpellBook(1269383)` on `SPELLS_CHANGED`; availability is temporary spellbook presence, not an aura or a resource/range usability check. Only Arms (spec `71`) processes proc events. Enabling and world entry resynchronize state; late `Blizzard_CooldownViewer` loading is handled through `ADDON_LOADED`.
 
-Without EllesmereUI CDM, the addon-owned frame is parented to `BuffIconCooldownViewer`, marked `ignoreInLayout`, and anchored six pixels beyond its top-right corner. A post-hook on `RefreshLayout` applies the native 40px buff-icon size multiplied by `iconScale`.
+Without EllesmereUI CDM, the addon-owned frame is parented to `BuffIconCooldownViewer`, marked `ignoreInLayout`, and anchored six pixels outside the selected top corner. `heroicStrike.side` defaults to `"right"`; `"left"` selects the opposite edge. A post-hook on `RefreshLayout` applies the native 40px buff-icon size multiplied by `iconScale`.
 
-With EllesmereUI CDM enabled, use its module namespace's `GetCDMBarFrame("buffs")` and `GetCDMBarIcons("buffs")`, not the unrelated native viewer bounds. Parent to the provider bar and dock to its edge icon using rendered dimensions, with scale conversion and provider spacing. Select layout participants without aura/visibility queries; skip the provider's shift-hidden entries. An empty row uses its starting anchor, since Ellesmere retains stale empty-container bounds.
+With EllesmereUI CDM enabled, use its module namespace's `GetCDMBarFrame("buffs")` and `GetCDMBarIcons("buffs")`, not the unrelated native viewer bounds. Parent to the provider bar and dock to the selected edge icon using rendered dimensions, with scale conversion and provider spacing. On horizontal rows, side selection is independent of growth direction. On vertical rows, Right preserves the growth end and Left uses the opposite end. Select layout participants without aura/visibility queries; skip the provider's shift-hidden entries. An empty row uses its starting anchor regardless of side, since Ellesmere retains stale empty-container bounds.
 
 `_AuraCustomPoke("buffs")` covers layout, visibility, and opacity; it fires before final positions are written, so coalesce refreshes with `C_Timer.After(0, ...)`. `RefreshAuraCustomStyle` also covers settings-only appearance changes. Reuse `ApplyShapeToCDMIcon` and `PP.CreateBorder` on the addon-owned frame for crop/border/shape parity; this is an approved compatibility exception to the public skin API. Capability-check the helpers: an enabled but unsupported Ellesmere CDM suppresses the companion instead of falling back to the misplaced native anchor. Native mode is restored when Ellesmere CDM is disabled.
 
 Native pooled items, aura state, and provider icon lists are left untouched. Disabling hides the companion and unregisters events; retained hooks and queued callbacks return before feature work. Only the primary Ellesmere Buffs row and native viewer are supported.
+
+`heroicStrike.glowType` defaults to `"none"` and is selected in the CDM Plugins card. Its native glow uses the shared helper on the companion frame, follows rendered width/height, and inherits provider visibility. Proc consumption, leaving Arms, and feature disable stop the animation; a subsequent proc restarts it.
 
 ---
 

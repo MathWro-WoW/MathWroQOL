@@ -35,7 +35,10 @@ end
 
 local function updateIcon()
     if not isEnabled() or not iconFrame then return end
-    iconFrame:SetShown(displayReady and isArms() and C_SpellBook.IsSpellInSpellBook(SPELL_ID))
+    local shown = displayReady and isArms() and C_SpellBook.IsSpellInSpellBook(SPELL_ID)
+    iconFrame:SetShown(shown)
+    local width, height = iconFrame:GetSize()
+    addon:ApplyIconGlow(iconFrame, iconFrame, shown and addon.db.heroicStrike.glowType or "none", width, height)
 end
 
 local function ensureFrame(parent)
@@ -70,7 +73,9 @@ local function layoutEllesmere(ns)
     ensureFrame(bar)
     local grow = bd.growDirection or "CENTER"
     local vertical = grow == "UP" or grow == "DOWN" or (grow == "CENTER" and bd.verticalOrientation)
-    local reverse = grow == "LEFT" or grow == "UP"
+    local reverse = addon.db.heroicStrike.side == "left"
+    -- Vertical rows retain their growth-end placement by default.
+    if vertical and grow == "UP" then reverse = not reverse end
     local icons = ns.GetCDMBarIcons("buffs")
     local reference
     if icons and bar._acLiveW ~= 0 then
@@ -110,7 +115,7 @@ local function layoutEllesmere(ns)
         local height = bd.iconShape == "cropped" and math.floor(size * 0.8 + 0.5) or size
         iconFrame:SetSize(math.floor(size / pixel + 0.5) * pixel, math.floor(height / pixel + 0.5) * pixel)
         local point = grow == "CENTER" and "CENTER"
-            or (vertical and (reverse and "BOTTOM" or "TOP") or (reverse and "RIGHT" or "LEFT"))
+            or (vertical and (grow == "UP" and "BOTTOM" or "TOP") or (grow == "LEFT" and "RIGHT" or "LEFT"))
         iconFrame:SetPoint(point, bar, point, 0, 0)
     end
 
@@ -141,7 +146,11 @@ local function refreshLayout()
             end
             local size = ICON_SIZE * (viewer.iconScale or 1)
             iconFrame:SetSize(size, size)
-            iconFrame:SetPoint("TOPLEFT", viewer, "TOPRIGHT", 6, 0)
+            if addon.db.heroicStrike.side == "left" then
+                iconFrame:SetPoint("TOPRIGHT", viewer, "TOPLEFT", -6, 0)
+            else
+                iconFrame:SetPoint("TOPLEFT", viewer, "TOPRIGHT", 6, 0)
+            end
             iconFrame:SetFrameStrata("MEDIUM")
             iconFrame:SetAlpha(1)
             displayReady = true
@@ -187,7 +196,10 @@ end
 
 function HeroicStrike:Apply()
     if eventFrame then eventFrame:UnregisterAllEvents() end
-    if iconFrame then iconFrame:Hide() end
+    if iconFrame then
+        iconFrame:Hide()
+        addon:ApplyIconGlow(iconFrame, iconFrame, "none")
+    end
     displayReady = false
     if not isEnabled() then return end
 

@@ -2005,11 +2005,31 @@ local function BuildCDMPluginsPanel()
             addon:NotifyFeature("heroicStrike")
         end
     )
+    local sideLabel = heroicContent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    sideLabel:SetPoint("TOPLEFT", heroicCB, "BOTTOMLEFT", 4, -8)
+    sideLabel:SetText("Placement")
+    local sideDropdown = MakeDropdown(heroicContent, {
+        { label = "Right", value = "right" },
+        { label = "Left", value = "left" },
+    }, function() return addon.db.heroicStrike.side or "right" end,
+        function(value) addon.db.heroicStrike.side = value end, "heroicStrike")
+    sideDropdown:SetPoint("TOPLEFT", sideLabel, "BOTTOMLEFT", 0, -6)
+    local glowLabel = heroicContent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    glowLabel:SetPoint("TOPLEFT", sideDropdown, "BOTTOMLEFT", 0, -10)
+    glowLabel:SetText("Glow")
+    local glowDropdown = MakeDropdown(heroicContent, {
+        { label = "None", value = "none" },
+        { label = "Classic", value = "classic" },
+        { label = "Modern Proc", value = "proc" },
+        { label = "Assisted Combat", value = "assist" },
+    }, function() return addon.db.heroicStrike.glowType or "none" end,
+        function(value) addon.db.heroicStrike.glowType = value end, "heroicStrike")
+    glowDropdown:SetPoint("TOPLEFT", glowLabel, "BOTTOMLEFT", 0, -6)
     local heroicHelp = heroicContent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    heroicHelp:SetPoint("TOPLEFT", heroicCB, "BOTTOMLEFT", 4, -8)
+    heroicHelp:SetPoint("TOPLEFT", glowDropdown, "BOTTOMLEFT", 0, -8)
     heroicHelp:SetWidth(430)
     heroicHelp:SetJustifyH("LEFT")
-    heroicHelp:SetText("Arms specialization only. EllesmereUI: follows the Buffs row's icon size, spacing, appearance and visibility. An empty row shows the proc at its starting position. Without EllesmereUI CDM, enable Blizzard's Cooldown Manager. No Masque dependency.")
+    heroicHelp:SetText("Arms specialization only. EllesmereUI: follows the Buffs row's icon size, spacing, appearance and visibility. An empty row shows the proc at its starting position. For vertical rows, Right keeps the growth end; Left uses the opposite end. Without EllesmereUI CDM, enable Blizzard's Cooldown Manager. Glow appears only with the proc. No Masque dependency.")
     heroicCard:SetBottomWidget(heroicHelp, 12)
 
     return panel

@@ -136,6 +136,8 @@ local defaults = {
     },
     heroicStrike = {
         enabled = false,
+        glowType = "none",
+        side = "right",
     },
     auctionFilter = {
         currentExpansionOnly = false,
@@ -287,6 +289,46 @@ function addon:NotifyFeature(name)
             feature:Apply()
         end
     end
+end
+
+local GLOW_STYLES = {
+    classic = { texture = "Interface\\SpellActivationOverlay\\IconAlertAnts",
+        rows = 5, columns = 5, frames = 22, duration = 0.3, frameSize = 48, padding = 1.25 },
+    proc = { atlas = "UI-HUD-ActionBar-Proc-Loop-Flipbook", padding = 1.4 },
+    assist = { atlas = "RotationHelper_Ants_Flipbook", padding = 1.6 },
+}
+-- Native looping glows shared by proc companions and secure aura displays.
+-- Pass an addon-owned host; callers retain the state without reading aura buttons.
+function addon:ApplyIconGlow(display, host, glowType, width, height)
+    local style = GLOW_STYLES[glowType]
+    glowType = style and glowType or "none"
+    if display.glowType ~= glowType or display.glowWidth ~= width or display.glowHeight ~= height then
+        display.glowType, display.glowWidth, display.glowHeight = glowType, width, height
+        if display.glowGroup then
+            display.glowGroup:Stop()
+            display.glowTexture:Hide()
+        end
+        if not style then return end
+        if not display.glowTexture then
+            local texture = host:CreateTexture(nil, "OVERLAY")
+            texture:SetPoint("CENTER")
+            local group = texture:CreateAnimationGroup()
+            group:SetLooping("REPEAT")
+            display.glowTexture, display.glowGroup = texture, group
+            display.glowAnimation = group:CreateAnimation("FlipBook")
+        end
+        local texture, animation = display.glowTexture, display.glowAnimation
+        texture:SetSize(width * style.padding, height * style.padding)
+        if style.atlas then texture:SetAtlas(style.atlas) else texture:SetTexture(style.texture) end
+        animation:SetFlipBookRows(style.rows or 6)
+        animation:SetFlipBookColumns(style.columns or 5)
+        animation:SetFlipBookFrames(style.frames or 30)
+        animation:SetFlipBookFrameWidth(style.frameSize or 0)
+        animation:SetFlipBookFrameHeight(style.frameSize or 0)
+        animation:SetDuration(style.duration or 1)
+        texture:Show()
+    end
+    if style and not display.glowGroup:IsPlaying() then display.glowGroup:Play() end
 end
 
 SLASH_MQOLBUFFDEBUG1 = "/mqolbuffdebug"

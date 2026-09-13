@@ -92,10 +92,12 @@ Registers CooldownManagerCentered's icon viewers with Masque so their icons can 
 
 **Heroic Strike Proc Icon** *(disabled by default; Arms Warrior only)*
 Enable **Heroic Strike proc icon** in `/mqol` → **CDM Plugins**. The icon appears while Heroic Strike is temporarily available and disappears when consumed.
+Choose **Glow** below the toggle: **None** (default), **Classic**, **Modern Proc**, or **Assisted Combat**. These built-in effects follow the icon's displayed dimensions and appear only while the proc icon is visible, with either supported CDM provider.
+Choose **Placement** to put the companion on the **Right** (default) or **Left**. For vertical Ellesmere rows, Right retains the growth-end placement and Left uses the opposite end.
 
-With **EllesmereUI CDM** enabled, it docks at the end of the primary **Buffs** row, following its growth direction, rendered icon size, spacing, crop, border, shape, visibility, and opacity. When the row is empty, the proc occupies its starting position rather than appending to stale container bounds. This compatibility uses capability-checked Ellesmere CDM internals; if its required helpers are unavailable, the companion stays hidden instead of appearing at an unrelated native anchor.
+With **EllesmereUI CDM** enabled, it docks at the selected edge of the primary **Buffs** row, following its rendered icon size, spacing, crop, border, shape, visibility, and opacity. When the row is empty, the proc occupies its starting position rather than appending to stale container bounds. This compatibility uses capability-checked Ellesmere CDM internals; if its required helpers are unavailable, the companion stays hidden instead of appearing at an unrelated native anchor.
 
-Without EllesmereUI CDM, it sits just right of Blizzard's **Buff Icons** viewer and follows that viewer's position, visibility, and native icon scale; keep Blizzard's Cooldown Manager enabled. Other replacements are not independently integrated. This remains a docked companion, not a sortable entry, with no countdown or Masque dependency.
+Without EllesmereUI CDM, it sits just outside the selected side of Blizzard's **Buff Icons** viewer and follows that viewer's position, visibility, and native icon scale; keep Blizzard's Cooldown Manager enabled. Other replacements are not independently integrated. This remains a docked companion, not a sortable entry, with no countdown or Masque dependency.
 
 After `/reload`, check repeated procs in combat, a row with no other buffs, and live Ellesmere icon-size/crop/border changes. The companion should remain adjacent with matching dimensions and appearance, and disappear when consumed or its row is hidden.
 

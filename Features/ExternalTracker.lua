@@ -18,12 +18,6 @@ local ExternalTracker = {
 }
 addon.externalTracker = ExternalTracker
 
-local GLOW_STYLES = {
-    classic = { texture = "Interface\\SpellActivationOverlay\\IconAlertAnts",
-        rows = 5, columns = 5, frames = 22, duration = 0.3, frameSize = 48, padding = 1.25 },
-    proc = { atlas = "UI-HUD-ActionBar-Proc-Loop-Flipbook", padding = 1.4 },
-    assist = { atlas = "RotationHelper_Ants_Flipbook", padding = 1.6 },
-}
 
 local function applyAppearance(display, db, enabled)
     local zoom = (db.iconZoom or 8) / 100
@@ -31,35 +25,7 @@ local function applyAppearance(display, db, enabled)
         display.icon:SetTexCoord(zoom, 1 - zoom, zoom, 1 - zoom)
         display.zoom = zoom
     end
-    local glowType = enabled and (db.glowType or "none") or "none"
-    if display.glowType == glowType and display.glowSize == db.iconSize then return end
-    display.glowType, display.glowSize = glowType, db.iconSize
-    if display.glowGroup then
-        display.glowGroup:Stop()
-        display.glowTexture:Hide()
-    end
-    local style = GLOW_STYLES[glowType]
-    if not style then return end
-    if not display.glowTexture then
-        local texture = display.glowHost:CreateTexture(nil, "OVERLAY")
-        texture:SetPoint("CENTER")
-        local group = texture:CreateAnimationGroup()
-        group:SetLooping("REPEAT")
-        display.glowTexture, display.glowGroup = texture, group
-        display.glowAnimation = group:CreateAnimation("FlipBook")
-    end
-    local texture, animation = display.glowTexture, display.glowAnimation
-    texture:SetSize(db.iconSize * style.padding, db.iconSize * style.padding)
-    if style.atlas then texture:SetAtlas(style.atlas) else texture:SetTexture(style.texture) end
-    animation:SetFlipBookRows(style.rows or 6)
-    animation:SetFlipBookColumns(style.columns or 5)
-    animation:SetFlipBookFrames(style.frames or 30)
-    animation:SetFlipBookFrameWidth(style.frameSize or 0)
-    animation:SetFlipBookFrameHeight(style.frameSize or 0)
-    animation:SetDuration(style.duration or 1)
-    texture:Show()
-    -- C-side animation follows the aura parent's visibility without Lua ticks.
-    display.glowGroup:Play()
+    addon:ApplyIconGlow(display, display.glowHost, enabled and db.glowType or "none", db.iconSize, db.iconSize)
 end
 
 local function registerTracker(Tracker, title, previewSpellID)
@@ -332,9 +298,6 @@ local function registerTracker(Tracker, title, previewSpellID)
             end
             preview:SetSize(db.iconSize, db.iconSize)
             applyAppearance(previewAppearance, db, true)
-            if previewAppearance.glowGroup and GLOW_STYLES[db.glowType] then
-                previewAppearance.glowGroup:Play()
-            end
             preview:Show()
         end
         anchor:SetShown(iconCount > 0 or editing == true)

@@ -55,11 +55,31 @@ function Frame:IsVisible()
     return self.shown and (not self.parent or self.parent:IsVisible())
 end
 function Frame:CreateTexture()
-    local texture = {}
+    local texture = setmetatable({ parent = self, shown = true }, Frame)
     function texture:SetAllPoints() end
     function texture:SetTexCoord() end
     function texture:SetTexture(value) self.value = value end
+    function texture:SetAtlas(value) self.atlas = value end
+    self.textures = self.textures or {}
+    self.textures[#self.textures + 1] = texture
     return texture
+end
+function Frame:CreateAnimationGroup()
+    local group = {}
+    function group:SetLooping() end
+    function group:Play() self.playing = true end
+    function group:Stop() self.playing = false end
+    function group:IsPlaying() return self.playing == true end
+    function group:CreateAnimation()
+        local animation = {}
+        for _, method in ipairs({ "SetFlipBookRows", "SetFlipBookColumns", "SetFlipBookFrames",
+            "SetFlipBookFrameWidth", "SetFlipBookFrameHeight", "SetDuration" }) do
+            animation[method] = function() end
+        end
+        return animation
+    end
+    self.animation = group
+    return group
 end
 function CreateFrame(_, name, parent)
     local frame = setmetatable({ events = {}, shown = true, parent = parent }, Frame)
@@ -88,6 +108,8 @@ local function flush()
     while #pending > 0 do table.remove(pending, 1)() end
 end
 local addon = { db = { heroicStrike = { enabled = false } } }
+SlashCmdList = {}
+assert(loadfile("Core.lua"))("MathWroQOL", addon)
 function addon:RegisterFeature(feature) self.feature = feature end
 
 local function fire(event, ...)
@@ -117,17 +139,39 @@ assert(not MathWroQOL_HeroicStrike, "missing CDM must not produce a detached ico
 loadViewer()
 local icon = MathWroQOL_HeroicStrike
 assert(icon and icon:IsVisible(), "late CDM loading must display an already-active proc")
-assert(icon.parent == BuffIconCooldownViewer and icon.ignoreInLayout,
-    "companion must follow viewer visibility without joining its native layout")
+assert(icon:GetRect() == 606, "unset placement must retain the native right-side default")
+addon.db.heroicStrike.side = "left"
+addon.feature:Apply()
+assert(icon:GetRect() == -46, "Left must place the native companion outside the viewer's left edge")
+addon.db.heroicStrike.side = "right"
+addon.feature:Apply()
+assert(icon:GetRect() == 606, "Right must restore the original native placement")
+addon.db.heroicStrike.glowType = "classic"
+addon.feature:Apply()
+local glow = icon.textures[2]
+assert(glow and glow:IsVisible() and glow.animation:IsPlaying(),
+    "selecting a glow for an active proc must start a visible animation")
+assert(glow.width == 50 and glow.height == 50, "native glow must fit the displayed icon")
+addon.db.heroicStrike.glowType = "none"
+addon.feature:Apply()
+assert(icon:IsVisible() and not glow:IsVisible() and not glow.animation:IsPlaying(),
+    "None must remove the glow without hiding an available proc")
+addon.db.heroicStrike.glowType = "proc"
+addon.feature:Apply()
+assert(glow:IsVisible() and glow.animation:IsPlaying() and #icon.textures == 2,
+    "changing glow style must reuse and restart the existing effect")
 
 proc = false
 fire("SPELLS_CHANGED")
 assert(not icon:IsVisible(), "consuming Heroic Strike must hide its icon")
+assert(not glow.animation:IsPlaying(), "consuming the proc must stop its glow")
 proc = true
 fire("SPELLS_CHANGED")
 assert(icon:IsVisible(), "a subsequent proc must show again")
+assert(glow:IsVisible() and glow.animation:IsPlaying(), "the next proc must restart its glow")
 BuffIconCooldownViewer:Hide()
 assert(not icon:IsVisible(), "hidden CDM must hide the companion")
+assert(not glow:IsVisible(), "hidden native CDM must also hide the glow")
 BuffIconCooldownViewer:Show()
 assert(icon:IsVisible(), "showing CDM must restore a still-active proc")
 BuffIconCooldownViewer.iconScale = 1.5
@@ -137,6 +181,7 @@ assert(icon.width == 60 and icon.height == 60, "CDM icon scaling must resize the
 spec = 72
 fire("PLAYER_SPECIALIZATION_CHANGED", "player")
 assert(not icon:IsVisible(), "leaving Arms must clear the icon even while the spell query is stale")
+assert(not glow.animation:IsPlaying(), "leaving Arms must stop the proc glow")
 spec = 71
 fire("PLAYER_SPECIALIZATION_CHANGED", "player")
 assert(icon:IsVisible(), "returning to Arms must resynchronize an available proc")
@@ -148,6 +193,7 @@ fire("SPELLS_CHANGED")
 fire("PLAYER_ENTERING_WORLD")
 BuffIconCooldownViewer:RefreshLayout()
 assert(not icon:IsVisible() and queries == before, "disabled events/hooks must not query or revive the icon")
+assert(not glow.animation:IsPlaying(), "disabling the feature must stop its glow")
 addon.db.heroicStrike.enabled = true
 addon.feature:Apply()
 assert(icon:IsVisible(), "re-enabling must restore an existing proc")
@@ -190,6 +236,14 @@ assert(icon:GetParent() == bar and icon:GetAlpha() == 0.7, "companion must follo
 bar:Hide()
 assert(not icon:IsVisible(), "hiding Ellesmere must hide its companion")
 bar:Show()
+addon.db.heroicStrike.side = "left"
+addon.feature:Apply()
+left, bottom, width, height = icon:GetRect()
+assert(left == 150 and bottom == 100 and width == 48 and height == 48,
+    "Left must adjoin the first Ellesmere icon without changing the row")
+addon.db.heroicStrike.side = "right"
+addon.feature:Apply()
+assert(icon:GetRect() == 300, "Right must restore the Ellesmere row's right edge")
 
 -- Deferred provider layout: the notification precedes the final icon positions.
 eui._AuraCustomPoke("buffs")
@@ -199,6 +253,12 @@ flush()
 left, bottom, width, height = icon:GetRect()
 assert(left == 332 and bottom == 112 and width == 60 and height == 36,
     "companion must follow settled provider geometry, including cropped/matched icon sizes")
+assert(math.abs(glow.width - 84) < 0.0001 and math.abs(glow.height - 50.4) < 0.0001,
+    "glow dimensions must follow the rendered rectangular Ellesmere icon")
+addon.db.heroicStrike.glowType = "assist"
+addon.feature:Apply()
+assert(glow:IsVisible() and glow.animation:IsPlaying() and #icon.textures == 2,
+    "Assisted Combat glow must work on Ellesmere without allocating another effect")
 
 -- A settings-only appearance pass need not emit a layout notification.
 last:SetSize(32, 32)
@@ -215,10 +275,14 @@ left = icon:GetRect()
 assert(left == 250, "shift-hidden icons must not leave a gap at the end of the visible row")
 eui._ecmeFC[last] = nil
 bd.growDirection = "LEFT"
+addon.db.heroicStrike.side = "left"
 eui._AuraCustomPoke("buffs")
 flush()
 left = icon:GetRect()
-assert(left == 150, "left-growing bars must append the companion at the left edge")
+assert(left == 150, "explicit Left must remain at the left edge on a left-growing bar")
+addon.db.heroicStrike.side = "right"
+addon.feature:Apply()
+assert(icon:GetRect() == 320, "explicit Right must use the right edge regardless of horizontal growth")
 bd.growDirection = "DOWN"
 bd.verticalOrientation = true
 last:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, -50 / 1.5)
@@ -226,6 +290,11 @@ eui._AuraCustomPoke("buffs")
 flush()
 left, bottom = icon:GetRect()
 assert(left == 200 and bottom == 0, "vertical bars must append below their final icon")
+addon.db.heroicStrike.side = "left"
+addon.feature:Apply()
+left, bottom = icon:GetRect()
+assert(left == 200 and bottom == 150, "Left must use the opposite end of a vertical Ellesmere row")
+addon.db.heroicStrike.side = "right"
 bd.growDirection = "CENTER"
 bd.verticalOrientation = false
 

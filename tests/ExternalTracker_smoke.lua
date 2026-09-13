@@ -171,6 +171,8 @@ local addon = { db = { externalTracker = {
 addon.db.bloodlustTracker = {
     enabled = false, point = "CENTER", x = 0, y = 90, iconSize = 40, iconZoom = 8, glowType = "none",
 }
+SlashCmdList = {}
+assert(loadfile("Core.lua"))("MathWroQOL", addon)
 function addon:RegisterFeature(feature)
     self.features = self.features or {}
     self.features[feature.name] = feature
