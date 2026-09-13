@@ -85,10 +85,19 @@ Recolor selected ElvUI unit frame health bars while units have configured player
 **Buff Health Color — EllesmereUI**
 EllesmereUI Raid Frames already provides this functionality natively. In its Buff Manager, create an indicator and select **Health Bar Color** to configure spell assignment, ownership, color, and opacity. MathWroQOL deliberately does not install a second competing recolor runtime.
 
-### CDM Plugins *(requires CooldownManagerCentered and Masque)*
+### CDM Plugins
 
-**Centered Cooldown Manager Masque Skinning**
+**Centered Cooldown Manager Masque Skinning** *(requires CooldownManagerCentered and Masque)*
 Registers CooldownManagerCentered's icon viewers with Masque so their icons can use the same skins as the rest of the UI. The Essential, Utility, and Buff Icons viewers can be enabled independently in the options panel. When enabled, three groups appear in Masque under MathWroQOL: CMC Essential, CMC Utility, and CMC Buff Icons.
+
+**Heroic Strike Proc Icon** *(disabled by default; Arms Warrior only)*
+Enable **Heroic Strike proc icon** in `/mqol` → **CDM Plugins**. The icon appears while Heroic Strike is temporarily available and disappears when consumed.
+
+With **EllesmereUI CDM** enabled, it docks at the end of the primary **Buffs** row, following its growth direction, rendered icon size, spacing, crop, border, shape, visibility, and opacity. When the row is empty, the proc occupies its starting position rather than appending to stale container bounds. This compatibility uses capability-checked Ellesmere CDM internals; if its required helpers are unavailable, the companion stays hidden instead of appearing at an unrelated native anchor.
+
+Without EllesmereUI CDM, it sits just right of Blizzard's **Buff Icons** viewer and follows that viewer's position, visibility, and native icon scale; keep Blizzard's Cooldown Manager enabled. Other replacements are not independently integrated. This remains a docked companion, not a sortable entry, with no countdown or Masque dependency.
+
+After `/reload`, check repeated procs in combat, a row with no other buffs, and live Ellesmere icon-size/crop/border changes. The companion should remain adjacent with matching dimensions and appearance, and disappear when consumed or its row is hidden.
 
 ### Debug
 

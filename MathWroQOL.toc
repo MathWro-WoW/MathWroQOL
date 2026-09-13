@@ -4,7 +4,7 @@
 ## Author: MathWro
 ## Version: @project-version@
 ## X-Curse-Project-ID: 1482222
-## OptionalDeps: ElvUI, EllesmereUI, EllesmereUIActionBars, EllesmereUIRaidFrames, Masque, CooldownManagerCentered, LibSharedMedia-3.0, SharedMedia, SharedMedia_MyMedia
+## OptionalDeps: ElvUI, EllesmereUI, EllesmereUIActionBars, EllesmereUIRaidFrames, EllesmereUICooldownManager, Masque, CooldownManagerCentered, LibSharedMedia-3.0, SharedMedia, SharedMedia_MyMedia
 ## SavedVariables: MathWroQOLDB
 
 Libs\LibStub\LibStub.lua
@@ -26,6 +26,7 @@ Features\BuffHealthColor.lua
 Features\GameMenu.lua
 Features\CDMButton.lua
 Features\CMCMasque.lua
+Features\HeroicStrike.lua
 Features\AuctionFilter.lua
 Features\CombatLog.lua
 Features\CVarSettings.lua

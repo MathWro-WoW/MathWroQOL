@@ -27,6 +27,7 @@ lua tests/BuffHealthColor_smoke.lua
 lua tests/EditModeNudge_smoke.lua
 lua tests/ExternalTracker_smoke.lua
 lua tests/Config_Dropdown_smoke.lua
+lua tests/HeroicStrike_smoke.lua
 luac -p Core.lua Config.lua Features/*.lua tests/*.lua
 ```
 
@@ -41,6 +42,7 @@ Then validate in-game:
 |---|---|
 | `GameMenu.lua` | Press Escape; verify scale, drag, button placement, and Reset Position |
 | `CDMButton.lua` | Press Escape; verify the CDM button appears and slash commands work |
+| `HeroicStrike.lua` | On Arms, enable in `/mqol` → CDM Plugins. Test native CDM without Ellesmere, then Ellesmere CDM independently. Gain/consume repeated procs in combat; check active-proc `/reload`, disable/re-enable, spec changes, movement, scaling, and parent visibility. For Ellesmere, verify the primary Buffs row's empty state, growth direction, live crop/border/shape settings, and return to native mode when its CDM is disabled. |
 | `AuctionFilter.lua` | Open Auction House; confirm configured filters are pre-enabled |
 | `CombatLog.lua` | Enter/leave an enabled instance type; confirm logging starts/stops |
 | `VehicleBar.lua` | Test selected bars with ElvUI and EllesmereUI Action Bars independently when available |

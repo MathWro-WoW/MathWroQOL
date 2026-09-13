@@ -46,15 +46,16 @@ Defined in `MathWroQOL.toc`:
 17. `Features\GameMenu.lua`
 18. `Features\CDMButton.lua`
 19. `Features\CMCMasque.lua`
-20. `Features\AuctionFilter.lua`
-21. `Features\CombatLog.lua`
-22. `Features\CVarSettings.lua`
-23. `Features\EditModeNudge.lua`
-24. `Features\CombatTracker.lua`
-25. `Features\CombatTracker_Racials.lua`
-26. `Features\CombatTracker_Trinkets.lua`
-27. `Features\CombatTracker_Consumables.lua`
-28. `Features\ExternalTracker.lua`
+20. `Features\HeroicStrike.lua`
+21. `Features\AuctionFilter.lua`
+22. `Features\CombatLog.lua`
+23. `Features\CVarSettings.lua`
+24. `Features\EditModeNudge.lua`
+25. `Features\CombatTracker.lua`
+26. `Features\CombatTracker_Racials.lua`
+27. `Features\CombatTracker_Trinkets.lua`
+28. `Features\CombatTracker_Consumables.lua`
+29. `Features\ExternalTracker.lua`
 
 ---
 
@@ -124,6 +125,7 @@ Four surfaces to wire:
 | Game Menu | `GameMenu.lua` | `gameMenu` | Drag, scale, persist position of Escape menu |
 | CDM Button | `CDMButton.lua` | `cdmButton` | Injects a provider-aware CDM button into the Escape menu, positioned after ElvUI or EllesmereUI custom buttons; `/wa` and `/cm` slashes |
 | CMC Masque | `CMCMasque.lua` | `cmcMasque` | Registers CooldownManagerCentered Essential, Utility, and Buff Icon viewer buttons with Masque when both addons are loaded |
+| Heroic Strike | `HeroicStrike.lua` | `heroicStrike` | Opt-in Arms proc companion beside EllesmereUI's primary Buffs row or Blizzard's Buff Icons viewer; no aura or sortable CDM entry |
 | Auction Filter | `AuctionFilter.lua` | `auctionFilter` | Pre-enables AH filters on open |
 | Combat Log | `CombatLog.lua` | `combatLog` | Auto-starts/stops combat logging by instance type and level cap |
 | Camera Distance | `CVarSettings.lua` | `cameraDistance` | When enabled, checks `cameraDistanceMaxZoomFactor` on each login and restores its maximum (`2.6`) value |
@@ -133,6 +135,18 @@ Four surfaces to wire:
 | Combat Tracker | `CombatTracker.lua` + 3 section files | `combatTracker` | Cooldown icon display system (racials, trinkets, consumables); trinkets honor the configured `frames.trinkets.excludedItems` set |
 | External Tracker | `ExternalTracker.lua` | `externalTracker` | Independently opt-in external buffs on the player; secure duration icons, native aura-triggered LibSharedMedia sounds, or both |
 | Bloodlust Tracker | `ExternalTracker.lua` | `bloodlustTracker` | Independent duration icon for Bloodlust variants and drums; shares the External Tracker submenu and runtime implementation |
+
+### Heroic Strike CDM Companion
+
+`HeroicStrike.lua` checks `C_SpellBook.IsSpellInSpellBook(1269383)` on `SPELLS_CHANGED`; availability is temporary spellbook presence, not an aura or a resource/range usability check. Only Arms (spec `71`) processes proc events. Enabling and world entry resynchronize state; late `Blizzard_CooldownViewer` loading is handled through `ADDON_LOADED`.
+
+Without EllesmereUI CDM, the addon-owned frame is parented to `BuffIconCooldownViewer`, marked `ignoreInLayout`, and anchored six pixels beyond its top-right corner. A post-hook on `RefreshLayout` applies the native 40px buff-icon size multiplied by `iconScale`.
+
+With EllesmereUI CDM enabled, use its module namespace's `GetCDMBarFrame("buffs")` and `GetCDMBarIcons("buffs")`, not the unrelated native viewer bounds. Parent to the provider bar and dock to its edge icon using rendered dimensions, with scale conversion and provider spacing. Select layout participants without aura/visibility queries; skip the provider's shift-hidden entries. An empty row uses its starting anchor, since Ellesmere retains stale empty-container bounds.
+
+`_AuraCustomPoke("buffs")` covers layout, visibility, and opacity; it fires before final positions are written, so coalesce refreshes with `C_Timer.After(0, ...)`. `RefreshAuraCustomStyle` also covers settings-only appearance changes. Reuse `ApplyShapeToCDMIcon` and `PP.CreateBorder` on the addon-owned frame for crop/border/shape parity; this is an approved compatibility exception to the public skin API. Capability-check the helpers: an enabled but unsupported Ellesmere CDM suppresses the companion instead of falling back to the misplaced native anchor. Native mode is restored when Ellesmere CDM is disabled.
+
+Native pooled items, aura state, and provider icon lists are left untouched. Disabling hides the companion and unregisters events; retained hooks and queued callbacks return before feature work. Only the primary Ellesmere Buffs row and native viewer are supported.
 
 ---
 
@@ -203,7 +217,7 @@ Settings panels registered via `Settings.RegisterCanvasLayoutCategory` / `Settin
   - **External Tracker** — external master enable; selected-spell enable, icon/sound/both mode and SharedMedia sound preview; independent Bloodlust Tracker toggle; separate position resets and guidance for each tracker's Edit Mode appearance controls
   - **ElvUI** — ElvUI Vehicle Bar visibility and Buff Health Color controls; all controls disabled when ElvUI is absent
   - **EllesmereUI** — EllesmereUI Action Bars visibility, native Raid Frames Buff Manager guidance, and the optional Unlock Mode Nudge toggle; controls disabled when the required module is absent
-  - **CDM Plugins** — CooldownManagerCentered compatibility options such as Masque skinning
+  - **CDM Plugins** — CooldownManagerCentered Masque skinning and the independent Arms Heroic Strike proc companion
   - **Edit Mode** — EditModeNudge enable toggle for Blizzard Edit Mode and LibEditMode selections
   - **Debug** — provider-gated troubleshooting actions for Buff Health Color and Vehicle Bar
 
@@ -344,7 +358,7 @@ General event rules:
 - Do not duplicate EllesmereUI Raid Frames' Buff Manager. Its `Health Bar Color` indicator already covers player-cast healer buffs with per-spell ownership and color settings.
 - Game-menu integrations must discover visible, menu-sized custom `Button` children between Shop/Options and AddOns after deferred layout settles. CDM stays hidden during peer discovery so geometry-based integrations cannot anchor to each other and drift. Shift only the pooled lower section, and only by the measured collision amount; do not hardcode provider button names or fixed menu growth.
 - CDM Button styling is mutually exclusive: use ElvUI when only ElvUI is active, the exact EllesmereUI popup-menu skin when only EllesmereUI is active, and native Blizzard styling when both or neither suite is active.
-- Skin MathWroQOL-owned widgets through EllesmereUI's public `RegisterSkin("MathWroQOL", callback)` API by default. CDM Button is the sole exception because the public `Button` primitive does not expose popup-menu-specific inset, background, or border settings: capability-check the popup border helper, call it through `securecallfunction`, and retain the public API as fallback. Do not copy EllesmereUI textures.
+- Skin MathWroQOL-owned widgets through EllesmereUI's public `RegisterSkin("MathWroQOL", callback)` API by default. Approved exceptions: CDM Button uses the popup border helper because the public `Button` primitive lacks popup-specific settings (capability-check, call through `securecallfunction`, retain the public API fallback); the Heroic Strike companion uses the CDM appearance helper on its own frame for per-bar crop/border/shape parity (see its feature contract above). Do not copy EllesmereUI textures.
 
 ---
 

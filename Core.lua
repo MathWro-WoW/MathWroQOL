@@ -134,6 +134,9 @@ local defaults = {
             buffIcons = true,
         },
     },
+    heroicStrike = {
+        enabled = false,
+    },
     auctionFilter = {
         currentExpansionOnly = false,
         usableOnly = false,

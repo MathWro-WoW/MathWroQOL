@@ -1990,6 +1990,28 @@ local function BuildCDMPluginsPanel()
 
     card:SetBottomWidget(viewerContainer, 10)
 
+    local heroicCard, heroicContent = MakeCard(
+        sc,
+        card,
+        "Arms Warrior — Heroic Strike",
+        "Show Heroic Strike while its proc is available. The companion sits beside EllesmereUI's Buffs row when its CDM is enabled, or Blizzard's Buff Icons viewer otherwise; it is not a sortable CDM entry."
+    )
+    local heroicCB = MakeCheckbox(heroicContent, "Enable Heroic Strike proc icon", 12, -2,
+        function()
+            return addon.db.heroicStrike.enabled
+        end,
+        function(value)
+            addon.db.heroicStrike.enabled = value
+            addon:NotifyFeature("heroicStrike")
+        end
+    )
+    local heroicHelp = heroicContent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    heroicHelp:SetPoint("TOPLEFT", heroicCB, "BOTTOMLEFT", 4, -8)
+    heroicHelp:SetWidth(430)
+    heroicHelp:SetJustifyH("LEFT")
+    heroicHelp:SetText("Arms specialization only. EllesmereUI: follows the Buffs row's icon size, spacing, appearance and visibility. An empty row shows the proc at its starting position. Without EllesmereUI CDM, enable Blizzard's Cooldown Manager. No Masque dependency.")
+    heroicCard:SetBottomWidget(heroicHelp, 12)
+
     return panel
 end
 
