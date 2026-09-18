@@ -13,9 +13,11 @@ local originalPrint = print
 
 function CreateFrame(kind)
     assert(kind == "Frame")
-    eventFrame = {}
+    eventFrame = { events = {} }
 
-    function eventFrame:RegisterEvent() end
+    function eventFrame:RegisterEvent(event)
+        self.events[event] = true
+    end
 
     function eventFrame:SetScript(script, callback)
         self[script] = callback
@@ -68,11 +70,17 @@ function addon:RegisterFeature(feature)
     self.feature = feature
 end
 
+local function fireEvent(event)
+    if eventFrame.events[event] then
+        eventFrame:OnEvent(event)
+    end
+end
+
 local function transition(isInInstance, newInstanceType, newDifficultyID)
     inInstance = isInInstance
     instanceType = newInstanceType
     difficultyID = newDifficultyID or 1
-    eventFrame:OnEvent(eventFrame, "ZONE_CHANGED_NEW_AREA")
+    fireEvent("ZONE_CHANGED_NEW_AREA")
 end
 
 assert(loadfile("Features/CombatLog.lua"))("MathWroQOL", addon)
@@ -99,6 +107,33 @@ transition(true, "party", 8)
 assert(combatLogging, "Mythic+ must start logging in a keystone dungeon")
 transition(true, "party", 1)
 assert(not combatLogging, "Mythic+ must not start logging in a non-keystone dungeon")
+
+-- Starting a key changes difficulty in place, without another zone transition.
+for _, dungeonDifficulty in ipairs({ 1, 2, 23, 24 }) do
+    transition(true, "party", dungeonDifficulty)
+    assert(not combatLogging, "Mythic+ alone must exclude normal, heroic, Mythic 0, and timewalking")
+end
+transition(true, "party", 23)
+difficultyID = 8
+fireEvent("CHALLENGE_MODE_START")
+assert(combatLogging, "starting a keystone in place must enable Mythic+-only logging")
+local changesAfterKeyStart = #loggingChanges
+fireEvent("CHALLENGE_MODE_START")
+assert(#loggingChanges == changesAfterKeyStart, "duplicate key events must not restart logging")
+difficultyID = 23
+fireEvent("CHALLENGE_MODE_RESET")
+assert(not combatLogging, "resetting to Mythic 0 must stop Mythic+-only logging")
+
+addon.db.combatLog.mythicPlus = false
+addon.db.combatLog.dungeon = true
+transition(true, "party", 23)
+assert(combatLogging, "Dungeon alone must log Mythic 0")
+difficultyID = 8
+fireEvent("CHALLENGE_MODE_START")
+assert(not combatLogging, "Dungeon alone must stop logging when a keystone starts")
+addon.db.combatLog.dungeon = false
+addon.db.combatLog.mythicPlus = true
+transition(false)
 
 local categories = {
     { instanceType = "party", difficultyID = 1, setting = "dungeon" },

@@ -69,6 +69,9 @@ end
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+-- Keystone starts/resets change content type without requiring a zone transition.
+eventFrame:RegisterEvent("CHALLENGE_MODE_START")
+eventFrame:RegisterEvent("CHALLENGE_MODE_RESET")
 eventFrame:SetScript("OnEvent", function(self, event)
     onZoneTransition()
 end)
@@ -78,5 +81,5 @@ function CombatLog:Initialize()
 end
 
 function CombatLog:Apply()
-    -- Settings only take effect on next zone transition; nothing to re-apply now.
+    -- Settings take effect on the next zone or challenge transition.
 end

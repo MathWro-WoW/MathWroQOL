@@ -29,6 +29,8 @@ Automatically pre-enables selected filters each time you open the Auction House.
 **Automatic Combat Logging**
 Automatically starts combat logging only while you are in a selected instance type: dungeons, Mythic+ dungeons, raids, scenarios, PvP, and arenas each have independent toggles. When you transition to an unselected type or leave instances, the addon stops only logging it started. Optional max-level-only gate also stops addon-started logging while levelling. Respects manual stop — if you disable logging mid-instance, the addon will not re-enable it until you leave all instances.
 
+For Mythic+-only logging, enable **Mythic+** and leave **Dungeon** disabled. Logging starts when the keystone run starts, not when you enter the dungeon beforehand; normal, heroic, Mythic 0, and timewalking dungeons remain excluded. Keystone resets recheck the instance type and stop addon-started logging when it returns to a non-keystone dungeon.
+
 ### CVars and Settings
 
 **Camera Distance** *(disabled by default)*
