@@ -168,6 +168,7 @@ local defaults = {
         iconSize = 40,
         iconZoom = 8,
         glowType = "none",
+        soundChannel = "Master",
         spells = {},
     },
     bloodlustTracker = {

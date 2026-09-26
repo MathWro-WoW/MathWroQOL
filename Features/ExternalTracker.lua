@@ -211,20 +211,21 @@ local function registerTracker(Tracker, title, previewSpellID)
             sound = sharedMedia:Fetch("sound", settings.sound, true)
         end
         if sound == "" or sound == 1 then sound = nil end
+        local channel = getDb().soundChannel or "Master"
         local registration = soundRegistrations[spellID]
-        if registration and registration.sound == sound then return end
+        if registration and registration.sound == sound and registration.channel == channel then return end
         removeSound(spellID)
         if not sound then return end
 
         -- Blizzard owns the trigger; Lua never needs to inspect secret aura state.
-        local info = { unitToken = "player", spellID = spellID, outputChannel = "Master" }
+        local info = { unitToken = "player", spellID = spellID, outputChannel = channel }
         if type(sound) == "number" then
             info.soundFileID = sound
         else
             info.soundFileName = sound
         end
         local id = C_UnitAuras.AddAuraSound(Enum.UnitAuraSoundTrigger.Added, info)
-        if id then soundRegistrations[spellID] = { id = id, sound = sound } end
+        if id then soundRegistrations[spellID] = { id = id, sound = sound, channel = channel } end
     end
 
     function Tracker:Apply()

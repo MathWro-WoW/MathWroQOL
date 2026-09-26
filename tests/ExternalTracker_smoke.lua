@@ -201,6 +201,12 @@ db.spells[47788].enabled = false
 tracker:Apply()
 assert(hasIcon(33206) and soundFor(33206) and not hasIcon(47788) and not soundFor(47788), "disabling one spell must preserve another")
 assert(registrations == initialRegistrations + 1, "editing another spell must not re-arm unchanged alerts")
+db.soundChannel = "Dialog"
+tracker:Apply()
+assert(soundFor(33206).outputChannel == "Dialog", "changing channel must replace an existing alert even when its sound is unchanged")
+local channelRegistrations = registrations
+tracker:Apply()
+assert(registrations == channelRegistrations, "unchanged channel must not re-arm alerts")
 db.spells[33206].mode = "icon"
 tracker:Apply()
 assert(hasIcon(33206) and not soundFor(33206), "icon mode must remove the previous sound")

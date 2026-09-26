@@ -3209,8 +3209,27 @@ local function BuildExternalTrackerPanel()
             addon:NotifyFeature("externalTracker")
             refresh()
         end)
+    local channelBody = CreateFrame("Frame", nil, topContent)
+    channelBody:SetPoint("TOPLEFT", master, "BOTTOMLEFT", 4, -12)
+    channelBody:SetSize(460, 54)
+    local channelLabel = channelBody:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    channelLabel:SetPoint("TOPLEFT")
+    channelLabel:SetText("Sound Channel")
+    local channelDropdown = MakeDropdown(channelBody, {
+        { label = "Master", value = "Master" },
+        { label = "Sound Effects", value = "SFX" },
+        { label = "Music", value = "Music" },
+        { label = "Ambience", value = "Ambience" },
+        { label = "Dialog", value = "Dialog" },
+    }, function() return addon.db.externalTracker.soundChannel or "Master" end,
+        function(value)
+            if InCombatLockdown() or not addon.db.externalTracker.enabled then return end
+            addon.db.externalTracker.soundChannel = value
+        end, "externalTracker")
+    channelDropdown:SetPoint("TOPLEFT", channelLabel, "BOTTOMLEFT", 0, -6)
+    channelDropdown:SetDropdownWidth(300)
     local combatNote = topContent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    combatNote:SetPoint("TOPLEFT", master, "BOTTOMLEFT", 4, -8)
+    combatNote:SetPoint("TOPLEFT", channelBody, "BOTTOMLEFT", 0, -8)
     combatNote:SetWidth(460)
     combatNote:SetJustifyH("LEFT")
     combatNote:SetText("Settings are locked during combat. Sounds play when the buff is applied, not when the caster's cooldown becomes ready.")
@@ -3311,7 +3330,9 @@ local function BuildExternalTrackerPanel()
             or settings.mode == "icon" or settings.sound == "None" then return end
         local media = LibStub and LibStub("LibSharedMedia-3.0", true)
         local sound = media and media:Fetch("sound", settings.sound, true)
-        if sound and sound ~= "" and sound ~= 1 then PlaySoundFile(sound, "Master") end
+        if sound and sound ~= "" and sound ~= 1 then
+            PlaySoundFile(sound, addon.db.externalTracker.soundChannel or "Master")
+        end
     end)
     local mediaNote = spellContent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     mediaNote:SetPoint("TOPLEFT", detailBody, "BOTTOMLEFT", 0, -8)
@@ -3364,6 +3385,8 @@ local function BuildExternalTrackerPanel()
         local media = LibStub and LibStub("LibSharedMedia-3.0", true)
         soundDropdown:Refresh()
         master:Refresh()
+        channelDropdown:Refresh()
+        SetChildrenEnabled(channelBody, active)
         spellEnable:Refresh()
         modeDropdown:Refresh()
         master:SetEnabled(editable)
@@ -3386,7 +3409,7 @@ local function BuildExternalTrackerPanel()
         elseif settings.sound ~= "None" and not hasSound then
             mediaNote:SetText("The saved sound is unavailable. Enable its sound-pack addon or choose another sound. No replacement sound will play.")
         else
-            mediaNote:SetText("Choose a sound from your enabled addons. None is silent. Playback uses the Master sound channel.")
+            mediaNote:SetText("Choose a sound from your enabled addons. None is silent. Alerts and previews use the Sound Channel selected above.")
         end
         spellCard:SetBottomWidget(mediaNote, 12)
     end
