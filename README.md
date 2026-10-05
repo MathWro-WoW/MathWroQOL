@@ -24,6 +24,15 @@ Adds a "CDM" button to the Escape menu that directly opens the Cooldown Manager 
 **Auction House Filters**
 Automatically pre-enables selected filters each time you open the Auction House. Two independent toggles in the options panel: "Current expansion only" and "Usable only". Filters are re-applied on every AH open so any in-session manual changes are reset.
 
+**Folio Equipment Sets** *(disabled by default)*
+In `/mqol` → **General**, enable **Folio Equipment Sets**. Open Blizzard's **Omnium Folio**: an attached panel beneath the Folio window contains the equipment-set selector and **Save current Folio**, **Apply saved Folio**, and **Clear saved Folio** buttons. Choose your runes, select an equipment set, then save. Repeat for each set—for example, Haste for Anni and Critical Strike for Havoc. A successful gear-set swap restores that set's saved choices across all purchased choice rows.
+
+A separate stat-rune icon appears beside each linked set's **name** in the built-in Equipment Manager, without covering its gear icon or native buttons. It shows the **saved** fourth-row stat, not the currently active rune. Hover for the saved setup; click for **Apply saved Folio** or **Clear saved Folio**. The Folio panel also supports explicit Apply when Blizzard disables Equip because the gear is already worn or multiple sets contain identical items. Management controls are locked in combat; `/mqol` contains only the module toggle.
+
+**Clear saved Folio** removes only the association and icon; it does not delete the equipment set or change gear/current runes. Associations are character-specific, survive `/reload` and set renames, and are removed when an enabled module observes set deletion. Disabled modules retain their saved setups but perform no gameplay work and hide their icons and Folio panel.
+
+The module never purchases unselected rows or spends Folio currency. It preserves unfinished manual Folio edits, rejects unavailable saved choices before changing any rows, and waits for combat to end when a successful set swap requires a rune change. A newer successful set swap supersedes an older deferred request. Busy/restricted Folio changes report a reason; apply again when available. Commit completion is checked against committed selections, with no automatic resubmissions. Another Folio automation addon can compete for these choices; enable only one automatic controller.
+
 ### Combat Logging
 
 **Automatic Combat Logging**

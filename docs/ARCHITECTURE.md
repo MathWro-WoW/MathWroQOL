@@ -11,6 +11,7 @@ Canonical reference for architecture, code style, and WoW API patterns.
 - The `.toc` filename must exactly match the addon folder name: `MathWroQOL.toc` inside `MathWroQOL/`. Mismatch = addon invisible in-game.
 - Any hardcoded addon name strings (e.g. `ADDON_LOADED` checks) must use `"MathWroQOL"`.
 - Optional addon integrations are declared via `## OptionalDeps:` so ElvUI, EllesmereUI modules, Masque, and CooldownManagerCentered load first when present.
+- The settings subtitle reads `## Version:` through `C_AddOns.GetAddOnMetadata`; keep the release version in the TOC rather than duplicating it in Config.lua.
 
 ---
 
@@ -56,6 +57,7 @@ Defined in `MathWroQOL.toc`:
 27. `Features\CombatTracker_Trinkets.lua`
 28. `Features\CombatTracker_Consumables.lua`
 29. `Features\ExternalTracker.lua`
+30. `Features\FolioEquipmentSets.lua`
 
 ---
 
@@ -137,6 +139,7 @@ Four surfaces to wire:
 | Combat Tracker | `CombatTracker.lua` + 3 section files | `combatTracker` | Cooldown icon display system (racials, trinkets, consumables); trinkets honor the configured `frames.trinkets.excludedItems` set |
 | External Tracker | `ExternalTracker.lua` | `externalTracker` | Independently opt-in external buffs on the player; secure duration icons, native aura-triggered LibSharedMedia sounds, or both |
 | Bloodlust Tracker | `ExternalTracker.lua` | `bloodlustTracker` | Independent duration icon for Bloodlust variants and drums; shares the External Tracker submenu and runtime implementation |
+| Folio Equipment Sets | `FolioEquipmentSets.lua` | `folioEquipmentSets` | Opt-in full purchased Folio choice snapshots per character/equipment-set ID; saved stat badges and Apply/Clear actions in native Equipment Manager |
 
 ### Heroic Strike CDM Companion
 
@@ -210,12 +213,26 @@ The same file registers `bloodlustTracker` through the private `registerTracker`
 
 ---
 
+## Folio Equipment Sets
+
+`Features/FolioEquipmentSets.lua` exposes `addon.folioEquipmentSets` for the native Folio management panel; General options retain only its enable toggle and guidance. `folioEquipmentSets.enabled` defaults off; `characters[playerGUID][equipmentSetID]` stores `{ choices = { [nodeID] = entryID }, summary, stat = { label, name, icon, spellID } }`. `stat` is absent if the stat row was not selected when saved. Runtime config IDs are resolved afresh, not persisted. Set names are display-only, so rename preserves identity and different characters cannot inherit another character's set association.
+
+- Folio is Blizzard's Runes of Power trait system `48`, tree `1186`. Save reads `entryIDsWithCommittedRanks` for purchased multi-entry nodes, resolves their rune metadata through entry/definition/spell APIs, and leaves single-entry ranks untouched. Stat badges identify the selection spells `1279609` (Crit), `1279610` (Haste), `1279612` (Mastery), and `1279613` (Versatility), not proc auras.
+- `EQUIPMENT_SWAP_FINISHED(true, setID)` requests a restore. Failed, unidentified, and unlinked swaps do not change runes. Enabling/login never guesses from `isEquipped`, because multiple sets may contain identical gear; explicit **Apply saved Folio** supports already-equipped sets. The latest successful request supersedes combat-deferred or commit-queued requests.
+- Before staging, check `IsReadyForCommit`, `CanEditConfig`, existing staged edits, and every saved node/entry. Empty/unpurchased or removed saved rows reject the whole restore without purchasing currency ranks. `SetSelection` changes only differing choices, followed by `CommitConfig`. Roll back only this operation's staging when selection/submission is synchronously rejected.
+- An accepted commit is observed read-only for at most 30 checks at 0.1-second intervals. Completion requires readiness, no staged changes, and all saved committed choices matching. Never resubmit or roll back an accepted commit: subsequent manual edits may own the staging. `CONFIG_COMMIT_FAILED` terminates the matching observation. Disabling cancels local observers/queued requests; an already-submitted server operation cannot be undone.
+- Post-hook native `PaperDollEquipmentManagerPane_InitButton` and `PaperDollEquipmentManagerPane_Update` only after enable/API availability. Each pooled gear row reuses a 16px addon-owned stat icon beside the set name, before the equipped check and above edit/delete controls. Reserve name width without cumulative shrinking; restore it on unlink/disable while respecting provider adjustments. The icon reads saved metadata and hides for unlinked/New Set rows. Its tooltip describes the full saved setup; its context menu applies or clears the captured set ID.
+- Config's `addon:CreateFolioEquipmentSetControls(host)` reuses the shared dropdown/backdrop/skin helpers to create the equipment-set selector and Save/Apply/Clear footer beneath the native Folio overlay. Runtime hooks the concrete `ExpansionLandingPage` frame's `OnShow` and `RefreshExpansionOverlay`, mounts only an `overlayFrame` with `RunesOfPowerFrame`, and never forces Blizzard UI loading. Reuse the current host's controls, hide them on disable, and use `IsVisible` to avoid gameplay queries when their native parent is hidden.
+- `SaveSet`, `ApplySet`, `ClearSet`, `HasSavedSet`, `GetSummary`, and `GetEquipmentSetOptions` are the management interface. Runtime owns `RefreshControls(message)`, forwarding to the panel's `Refresh(message)`; saved summary and operation status remain separate. Combat entry/exit refreshes lock all management controls. Clearing removes the association only. `EQUIPMENT_SETS_CHANGED` prunes deleted associations while enabled. Disabled runtime unregisters events/hides owned UI; retained hooks, menu actions, and timer callbacks return before gameplay work.
+
+---
+
 ## Config.lua Panels
 
 Settings panels registered via `Settings.RegisterCanvasLayoutCategory` / `Settings.RegisterCanvasLayoutSubcategory` (TWW API), with fallback to `InterfaceOptions_AddCategory`:
 
 - **Parent** — "MathWro QOL" (container, no interactive controls)
-  - **General** — GameMenu scaling / drag / reset position; CombatLog instance toggles + level filter
+  - **General** — GameMenu scaling / drag / reset position; CDM Button and slash toggles; Auction House filters; opt-in Folio Equipment Sets toggle and native Folio UI guidance
   - **CVars and Settings** — optional CVar enforcement such as maximum camera distance
   - **Combat Tracker** — master enable; per-section collapsible blocks (Racials, Trinkets, Consumables)
   - **External Tracker** — external master enable; selected-spell enable, icon/sound/both mode and SharedMedia sound preview; independent Bloodlust Tracker toggle; separate position resets and guidance for each tracker's Edit Mode appearance controls

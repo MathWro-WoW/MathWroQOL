@@ -28,6 +28,7 @@ lua tests/EditModeNudge_smoke.lua
 lua tests/ExternalTracker_smoke.lua
 lua tests/Config_Dropdown_smoke.lua
 lua tests/HeroicStrike_smoke.lua
+lua tests/FolioEquipmentSets_smoke.lua
 luac -p Core.lua Config.lua Features/*.lua tests/*.lua
 ```
 
@@ -44,6 +45,7 @@ Then validate in-game:
 | `CDMButton.lua` | Press Escape; verify the CDM button appears and slash commands work |
 | `HeroicStrike.lua` | On Arms, enable in `/mqol` → CDM Plugins. Test native CDM without Ellesmere, then Ellesmere CDM independently. Gain/consume repeated procs in combat; check active-proc `/reload`, disable/re-enable, spec changes, movement, scaling, and parent visibility. Check Right (default)/Left placement, None/Classic/Modern Proc/Assisted Combat, and glow removal on proc consumption. For Ellesmere, verify the primary Buffs row's empty state, growth direction, live crop/border/shape settings, and return to native mode when its CDM is disabled. |
 | `AuctionFilter.lua` | Open Auction House; confirm configured filters are pre-enabled |
+| `FolioEquipmentSets.lua` | Enable in `/mqol` → General; verify only the toggle remains there. Open Omnium Folio and use its attached set selector and Save/Apply/Clear controls to save Haste and Crit full setups to two gear sets. Swap both ways and verify every saved choice plus the saved-stat icons beside Equipment Manager set names, tooltips, and native button clearance. Check badge and Folio-panel Apply/Clear preserve gear/current runes and never delete the set. Test identical-gear sets with explicit Apply, long names, scrolling/recycled rows, rename/deletion, `/reload`, Folio close/reopen, disabled/re-enabled state, combat-locked controls, deferred swap cancellation, unavailable rows, and unfinished manual Folio edits. Check the footer fits the screen at the current UI scale. Use only one automatic Folio controller. |
 | `CombatLog.lua` | Enter/leave an enabled instance type; confirm logging starts/stops |
 | `VehicleBar.lua` | Test selected bars with ElvUI and EllesmereUI Action Bars independently when available |
 | `BuffHealthColor.lua` | With ElvUI, test configured spell IDs on player, target, party, and raid frames; verify restricted aura updates produce no Lua errors |
@@ -57,7 +59,7 @@ Then validate in-game:
 ---
 
 ## Releases
-GitHub Actions only. Use Semantic Versioning: additive features increment MINOR; fixes increment PATCH. Create and push an annotated tag:
+GitHub Actions only. Use Semantic Versioning: additive features increment MINOR; fixes increment PATCH. Before tagging, set `## Version:` in `MathWroQOL.toc` to `X.Y.Z`. Create and push an annotated tag:
 
 ```bash
 git tag -a vX.Y.Z -m "vX.Y.Z"

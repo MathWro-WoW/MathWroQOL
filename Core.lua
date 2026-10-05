@@ -143,6 +143,10 @@ local defaults = {
         currentExpansionOnly = false,
         usableOnly = false,
     },
+    folioEquipmentSets = {
+        enabled = false,
+        characters = {},
+    },
     combatLog = {
         dungeon      = false,
         mythicPlus   = false,

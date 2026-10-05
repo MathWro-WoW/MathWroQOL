@@ -1,4 +1,4 @@
-local _, addon = ...
+local addonName, addon = ...
 
 local function ElvSkin()
     if not ElvUI then return nil end
@@ -403,7 +403,7 @@ end
 local _dropdownCount = 0
 local function MakeDropdown(parent, options, getValue, setValue, notifyFeature)
     _dropdownCount = _dropdownCount + 1
-    notifyFeature = notifyFeature or "combatTracker"
+    notifyFeature = notifyFeature == nil and "combatTracker" or notifyFeature
     local optionSource = options
 
     local btn = CreateFrame(
@@ -423,13 +423,14 @@ local function MakeDropdown(parent, options, getValue, setValue, notifyFeature)
     end
 
     local function getSelectedLabel()
+        local currentOptions = type(optionSource) == "function" and optionSource() or optionSource
         local current = getValue()
-        for _, option in ipairs(options) do
+        for _, option in ipairs(currentOptions) do
             if option.value == current then
                 return formatOptionLabel(option)
             end
         end
-        return options[1] and formatOptionLabel(options[1]) or ""
+        return currentOptions[1] and formatOptionLabel(currentOptions[1]) or ""
     end
 
     local function refreshText()
@@ -459,7 +460,7 @@ local function MakeDropdown(parent, options, getValue, setValue, notifyFeature)
                     function(value) return getValue() == value end,
                     function(value)
                         setValue(value)
-                        addon:NotifyFeature(notifyFeature)
+                        if notifyFeature then addon:NotifyFeature(notifyFeature) end
                         refreshText()
                     end,
                     option.value
@@ -490,6 +491,153 @@ local function MakeDropdown(parent, options, getValue, setValue, notifyFeature)
     btn._mqolRefreshControl = true
     btn:Refresh()
     return btn
+end
+
+function addon:CreateFolioEquipmentSetControls(host)
+    if not host then return nil end
+
+    local frame = CreateFrame("Frame", nil, host, "BackdropTemplate")
+    frame:SetSize(500, 132)
+    frame:ClearAllPoints()
+    frame:SetPoint("TOP", host, "BOTTOM", 0, -12)
+    ApplyFrameBackdrop(frame, true)
+
+    local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    title:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -8)
+    title:SetText("Folio Equipment Sets")
+    title:SetTextColor(1, 0.82, 0, 1)
+
+    local setLabel = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    setLabel:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -7)
+    setLabel:SetText("Equipment set:")
+
+    local selectedSetID
+    local status
+    local function getFeature()
+        local db = addon.db.folioEquipmentSets
+        if not db or not db.enabled then return nil end
+        return addon.folioEquipmentSets
+    end
+
+    local function getOptions()
+        if not frame:IsVisible() then return {} end
+        local feature = getFeature()
+        if not feature or not feature.GetEquipmentSetOptions then return {} end
+        return feature:GetEquipmentSetOptions()
+    end
+
+    local dropdown
+    local summary = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    summary:SetWidth(476)
+    summary:SetJustifyH("LEFT")
+
+    local statusText = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    statusText:SetWidth(476)
+    statusText:SetJustifyH("LEFT")
+
+    local saveButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    saveButton:SetSize(148, 22)
+    saveButton:SetText("Save current Folio")
+
+    local applyButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    applyButton:SetSize(148, 22)
+    applyButton:SetText("Apply saved Folio")
+
+    local clearButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    clearButton:SetSize(148, 22)
+    clearButton:SetText("Clear saved Folio")
+
+    local skin = ElvSkin()
+    if skin then
+        skin:HandleButton(saveButton)
+        skin:HandleButton(applyButton)
+        skin:HandleButton(clearButton)
+    end
+
+    local function layout()
+        local summaryHeight = math.max(14, summary:GetStringHeight())
+        local statusHeight = math.max(14, statusText:GetStringHeight())
+        summary:ClearAllPoints()
+        summary:SetPoint("TOPLEFT", setLabel, "BOTTOMLEFT", 0, -10)
+        statusText:ClearAllPoints()
+        statusText:SetPoint("TOPLEFT", summary, "BOTTOMLEFT", 0, -6)
+        saveButton:ClearAllPoints()
+        saveButton:SetPoint("TOPLEFT", statusText, "BOTTOMLEFT", 0, -8)
+        applyButton:ClearAllPoints()
+        applyButton:SetPoint("LEFT", saveButton, "RIGHT", 6, 0)
+        clearButton:ClearAllPoints()
+        clearButton:SetPoint("LEFT", applyButton, "RIGHT", 6, 0)
+        frame:SetHeight(30 + 28 + 10 + summaryHeight + 6 + statusHeight + 8 + 22 + 10)
+    end
+
+    dropdown = MakeDropdown(frame, getOptions,
+        function() return selectedSetID end,
+        function(value)
+            selectedSetID = value
+            status = nil
+            frame:Refresh()
+        end,
+        false
+    )
+    dropdown:ClearAllPoints()
+    dropdown:SetPoint("LEFT", setLabel, "RIGHT", 8, 0)
+    dropdown:SetDropdownWidth(342)
+
+    local function setButtonEnabled(button, enabled)
+        button:SetEnabled(enabled)
+        button:SetAlpha(enabled and 1 or 0.4)
+    end
+
+    function frame:Refresh(message)
+        if message then status = message end
+        if not self:IsVisible() then return end
+
+        local feature = getFeature()
+        local options = feature and getOptions() or {}
+        local found = false
+        for _, option in ipairs(options) do
+            if option.value == selectedSetID then
+                found = true
+                break
+            end
+        end
+        if not found then selectedSetID = options[1] and options[1].value or nil end
+
+        local editable = feature ~= nil and not InCombatLockdown()
+        local hasSaved = editable and selectedSetID and feature.HasSavedSet and feature:HasSavedSet(selectedSetID)
+        setButtonEnabled(saveButton, editable and selectedSetID ~= nil and feature.SaveSet ~= nil)
+        setButtonEnabled(applyButton, hasSaved == true and feature.ApplySet ~= nil)
+        setButtonEnabled(clearButton, hasSaved == true and feature.ClearSet ~= nil)
+        dropdown:SetEnabled(editable)
+        dropdown:SetAlpha(editable and 1 or 0.4)
+        dropdown:Refresh()
+
+        if not feature then
+            summary:SetText("Folio Equipment Sets is disabled.")
+        elseif not selectedSetID then
+            summary:SetText("No built-in equipment sets are available.")
+        else
+            summary:SetText((feature.GetSummary and feature:GetSummary(selectedSetID)) or "No Folio snapshot saved for this equipment set.")
+        end
+        statusText:SetText(status or (InCombatLockdown() and "Folio actions are unavailable in combat." or ""))
+        layout()
+    end
+
+    local function runAction(method)
+        local feature = getFeature()
+        if InCombatLockdown() or not feature or not selectedSetID or not feature[method] then return end
+        if (method == "ApplySet" or method == "ClearSet") and (not feature.HasSavedSet or not feature:HasSavedSet(selectedSetID)) then return end
+        local success, message = feature[method](feature, selectedSetID)
+        frame:Refresh(message or (success and "Folio updated." or "Folio action failed."))
+    end
+
+    saveButton:SetScript("OnClick", function() runAction("SaveSet") end)
+    applyButton:SetScript("OnClick", function() runAction("ApplySet") end)
+    clearButton:SetScript("OnClick", function() runAction("ClearSet") end)
+    frame:HookScript("OnShow", function(self) self:Refresh() end)
+    frame:HookScript("OnHide", function() if dropdown:IsMenuOpen() then dropdown:CloseMenu() end end)
+    frame:Show()
+    return frame
 end
 
 local function MakeCollapsibleSection(parent, title, isExpanded)
@@ -587,7 +735,8 @@ local function BuildParentPanel()
 
     local ver = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     ver:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
-    ver:SetText("v1.12.0 by MathWro  |  Select a category on the left.")
+    local version = C_AddOns.GetAddOnMetadata(addonName, "Version")
+    ver:SetText("v" .. version .. " by MathWro  |  Select a category on the left.")
 
     return panel
 end
@@ -760,6 +909,45 @@ local function BuildGeneralPanel()
 
     auctionCard:SetBottomWidget(ahUsableCB, 10)
 
+    local folioCard, folioContent = MakeCard(
+        sc,
+        auctionCard,
+        "Folio Equipment Sets",
+        "Save, apply, and clear Folio setups from the Omnium Folio interface."
+    )
+
+    local folioEnableCB
+    folioEnableCB = MakeCheckbox(folioContent, "Enable Folio Equipment Sets", 0, 0,
+        function()
+            return addon.db.folioEquipmentSets and addon.db.folioEquipmentSets.enabled == true
+        end,
+        function(val)
+            if InCombatLockdown() then
+                folioEnableCB:Refresh()
+                return
+            end
+            addon.db.folioEquipmentSets = addon.db.folioEquipmentSets or { characters = {} }
+            addon.db.folioEquipmentSets.enabled = val
+            addon:NotifyFeature("folioEquipmentSets")
+        end
+    )
+    folioEnableCB:ClearAllPoints()
+    folioEnableCB:SetPoint("TOPLEFT", folioContent, "TOPLEFT", 12, -2)
+
+    local folioGuide = folioContent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    folioGuide:SetPoint("TOPLEFT", folioEnableCB, "BOTTOMLEFT", 20, -6)
+    folioGuide:SetWidth(430)
+    folioGuide:SetJustifyH("LEFT")
+    folioGuide:SetText("Open Omnium Folio to manage equipment-set Folio setups.")
+    folioCard:SetBottomWidget(folioGuide, 10)
+
+    local function refreshFolioToggle()
+        folioEnableCB:Refresh()
+        local editable = not InCombatLockdown()
+        folioEnableCB:SetEnabled(editable)
+        folioEnableCB:SetAlpha(editable and 1 or 0.4)
+    end
+
     local function refreshGeneralControls()
         local gameMenu = addon.db.gameMenu or {}
         gmSlider:SetValue(gameMenu.scale or 1.0)
@@ -777,9 +965,21 @@ local function BuildGeneralPanel()
 
         updateDragGatekeeper()
         updateCDMGatekeeper()
+        refreshFolioToggle()
     end
 
-    panel:HookScript("OnShow", refreshGeneralControls)
+    panel:HookScript("OnShow", function()
+        refreshGeneralControls()
+        panel:RegisterEvent("PLAYER_REGEN_DISABLED")
+        panel:RegisterEvent("PLAYER_REGEN_ENABLED")
+    end)
+    panel:HookScript("OnHide", function()
+        panel:UnregisterEvent("PLAYER_REGEN_DISABLED")
+        panel:UnregisterEvent("PLAYER_REGEN_ENABLED")
+    end)
+    panel:SetScript("OnEvent", function()
+        if panel:IsShown() then refreshFolioToggle() end
+    end)
     refreshGeneralControls()
 
     return panel
