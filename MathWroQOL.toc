@@ -2,7 +2,7 @@
 ## Title: MathWro QOL
 ## Notes: Quality of Life improvements by MathWro
 ## Author: MathWro
-## Version: 1.18.0
+## Version: 1.18.1
 ## X-Curse-Project-ID: 1482222
 ## OptionalDeps: ElvUI, EllesmereUI, EllesmereUIActionBars, EllesmereUIRaidFrames, EllesmereUICooldownManager, Masque, CooldownManagerCentered, LibSharedMedia-3.0, SharedMedia, SharedMedia_MyMedia
 ## SavedVariables: MathWroQOLDB

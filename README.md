@@ -53,6 +53,8 @@ Never changes your existing queue window until you explicitly enable it. First a
 **Racials, Trinkets & Consumables**
 Displays icon bars for racial abilities, equipped trinkets, and consumable items (combat potions, healing potions, mana potions, healthstones). Each section tracks cooldowns with swipe animations and optional countdown text. Consumables show stack counts from your inventory. Individual racial abilities can be hidden via the options panel; the Trinkets panel accepts a comma-separated list of item IDs to exclude lore-only or otherwise unwanted on-use trinkets. When both a regular and fleeting version of a consumable are in your bags, only the fleeting version is shown.
 
+On-use trinkets use their equipped item's full cooldown, including in combat, rather than the potentially shorter use-spell cooldown. Disabled or finished cooldowns clear the countdown and restore icon color. This path is verified against the WoW 12.1.5 APIs.
+
 **Layout & Positioning**
 Each section can be positioned independently via Edit Mode (LibEditMode integration) or merged into another section's bar. Layout options include horizontal row, vertical column, and grid with configurable icons-per-row. Anchor direction controls growth direction.
 

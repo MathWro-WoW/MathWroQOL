@@ -131,14 +131,15 @@ function trinkets:UpdateCooldowns()
     for _, btn in ipairs(self.buttons) do
         if btn:IsShown() and btn._slotID then
             if btn._isOnUse then
-                local start, duration, _, modRate = GetInventoryItemCooldown("player", btn._slotID)
-                btn.cooldown:SetCooldown(start, duration, modRate)
-
-                local desaturate = false
-                if addon.db.combatTracker.frames.trinkets.desaturateOnCD then
-                    desaturate = start and start > 0 and duration and duration > 0
+                local start, duration, enabled = GetInventoryItemCooldown("player", btn._slotID)
+                local active = enabled == 1 and start > 0 and duration > 0
+                if active then
+                    btn.cooldown:SetCooldown(start, duration)
+                else
+                    btn.cooldown:Clear()
                 end
-                btn.icon:SetDesaturated(desaturate == true)
+                btn.icon:SetDesaturated(active
+                    and addon.db.combatTracker.frames.trinkets.desaturateOnCD == true)
             else
                 CT.UpdateButtonCooldownFromSpell(btn, nil)
             end

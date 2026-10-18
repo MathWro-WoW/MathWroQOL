@@ -7,9 +7,11 @@ local registeredFeature
 
 C_Spell = {
     GetSpellCooldown = function(spellID)
+        assert(spellID ~= 1003, "trinket updates must not inspect restricted item-spell state")
         return cooldownInfoBySpell[spellID]
     end,
     GetSpellCooldownDuration = function(spellID, ignoreGCD)
+        assert(spellID ~= 1003, "trinket updates must not use the item's shorter spell cooldown")
         assert(ignoreGCD == true, "tracked cooldowns must ignore the global cooldown")
         return durationBySpell[spellID]
     end,
@@ -21,19 +23,21 @@ C_Item = {
     end,
 }
 
+local inventoryStart, inventoryDuration, inventoryEnabled = 10, 90, 1
 function GetInventoryItemCooldown(unit, slotID)
     assert(unit == "player", "trinket cooldowns must query equipped inventory slots")
     assert(slotID == 13, "only the shown on-use trinket should query cooldown state")
-    return 10, 90, 1, 1
+    return inventoryStart, inventoryDuration, inventoryEnabled
 end
 
 local addon = {
     db = {
         combatTracker = {
+            enabled = true,
             frames = {
                 racials = { desaturateOnCD = true },
                 consumables = { desaturateOnCD = true },
-                trinkets = { desaturateOnCD = true },
+                trinkets = { enabled = true, desaturateOnCD = true },
             },
         },
     },
@@ -148,8 +152,7 @@ end)
 assert(trinketOK, "trinket refresh evaluated secret duration state: " .. tostring(trinketError))
 assert(not trinketButton.appliedDurationObject,
     "on-use trinkets must not use the item spell's shorter cooldown duration object")
-assert(trinketButton.appliedStart == 10 and trinketButton.appliedDuration == 90
-    and trinketButton.appliedModRate == 1,
+assert(trinketButton.appliedStart == 10 and trinketButton.appliedDuration == 90,
     "on-use trinkets must apply the equipped inventory item's real cooldown")
 assert(passiveTrinketButton.cleared and not passiveTrinketButton.appliedDuration,
     "passive trinkets must clear stale cooldown state")
@@ -165,6 +168,48 @@ setCooldownState(1003, trinketSpellDuration, false, false)
 addon.combatTracker.sections.trinkets:UpdateCooldowns()
 assert(trinketButton.desaturated,
     "equipped trinket cooldowns must desaturate even when the item spell reports inactive")
+
+-- Inventory cooldown timers can be disabled even with nonzero timing values.
+-- Such timers must not leave an old countdown or grey icon behind.
+inventoryEnabled = 0
+trinketButton.cleared = false
+addon.combatTracker.sections.trinkets:UpdateCooldowns()
+assert(trinketButton.cleared and not trinketButton.desaturated,
+    "disabled inventory cooldown timers must clear stale countdowns and desaturation")
+
+inventoryStart, inventoryDuration, inventoryEnabled = 0, 0, 1
+trinketButton.cleared = false
+addon.combatTracker.sections.trinkets:UpdateCooldowns()
+assert(trinketButton.cleared and not trinketButton.desaturated,
+    "ready trinkets must clear stale countdowns and desaturation")
+
+-- Exercise the real event/deferred-refresh path while combat is active.
+function InCombatLockdown() return true end
+local pendingTimers = {}
+C_Timer = {
+    After = function(_, callback)
+        pendingTimers[#pendingTimers + 1] = callback
+    end,
+}
+function CreateFrame()
+    return {
+        RegisterEvent = function() end,
+        SetScript = function(self, _, callback) self.onEvent = callback end,
+    }
+end
+local trinkets = addon.combatTracker.sections.trinkets
+trinkets:Initialize()
+for _, event in ipairs({ "BAG_UPDATE_COOLDOWN", "SPELL_UPDATE_COOLDOWN" }) do
+    inventoryStart, inventoryDuration, inventoryEnabled = 120, 90, 1
+    trinketButton.appliedStart = nil
+    trinkets.eventFrame:onEvent(event)
+    local callbacks = pendingTimers
+    pendingTimers = {}
+    for _, callback in ipairs(callbacks) do callback() end
+    assert(trinketButton.appliedStart == 120 and trinketButton.appliedDuration == 90
+        and trinketButton.desaturated,
+        event .. " must start the full inventory cooldown during combat")
+end
 
 local gcdDuration = restrictedDuration()
 setCooldownState(2001, gcdDuration, true, true)

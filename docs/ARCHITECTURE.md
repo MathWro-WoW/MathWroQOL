@@ -184,7 +184,9 @@ Key CT methods available to sections:
 | `CT:ApplyMasque(section)` | Lazy Masque group creation + button registration |
 | `CT:UpdateButtonCooldownFromSpell(btn, spellID)` | Applies a restricted-safe `LuaDurationObject` directly to the cooldown frame |
 
-Trinkets are the exception: they use `GetInventoryItemCooldown("player", slotID)` and pass the returned start/duration/modRate directly to `CooldownFrame:SetCooldown`; item spell cooldowns can be shorter than the equipped item cooldown.
+Trinkets are the exception: they use `GetInventoryItemCooldown("player", slotID)`, whose three returns are start, duration, and numeric enable (there is no modRate return). Start the cooldown with `CooldownFrame:SetCooldown(start, duration)` only when enable is `1` and both timing values are positive; otherwise clear it and restore icon saturation. Never inspect the on-use spell's cooldown state: it can be secret in combat and its duration can be shorter than the equipped item cooldown. `BAG_UPDATE_COOLDOWN` and `SPELL_UPDATE_COOLDOWN` refresh the equipped slots through a coalesced next-frame callback, including during combat.
+
+Verified against the exported Blizzard UI source for **12.1.5.70448**, commit [`b9be9379719047977fca4dba1bb1d9988e8840b3`](https://github.com/Gethe/wow-ui-source/tree/b9be9379719047977fca4dba1bb1d9988e8840b3): `Blizzard_UIPanels_Game/Mainline/PaperDollFrame.lua` uses the same inventory API and bag cooldown event; `Blizzard_FrameXMLUtil/Cooldown.lua` checks enable/start/duration before setting or clearing the cooldown. The addon TOC interface remains unchanged.
 
 `CombatTracker` exposes itself globally so section files can reference the parent:
 ```lua
