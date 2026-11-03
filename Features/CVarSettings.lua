@@ -9,8 +9,8 @@ local MAX_CAMERA_DISTANCE = "2.6"
 function CameraDistance:Apply()
     local db = addon.db and addon.db.cameraDistance
     if not db or not db.enabled then return end
-    if GetCVar(MAX_CAMERA_DISTANCE_CVAR) ~= MAX_CAMERA_DISTANCE then
-        SetCVar(MAX_CAMERA_DISTANCE_CVAR, MAX_CAMERA_DISTANCE)
+    if C_CVar.GetCVar(MAX_CAMERA_DISTANCE_CVAR) ~= MAX_CAMERA_DISTANCE then
+        C_CVar.SetCVar(MAX_CAMERA_DISTANCE_CVAR, MAX_CAMERA_DISTANCE)
     end
 end
 

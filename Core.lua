@@ -3,6 +3,10 @@ MathWroQOL = addon  -- global reference for other files
 
 addon.features = {}
 
+-- Forever shares Mainline's project ID, but uses the 1.60.x interface band.
+local interfaceVersion = select(4, GetBuildInfo())
+addon.isForever = interfaceVersion >= 16000 and interfaceVersion < 17000
+
 local defaults = {
     vehicleBar = {
         enabled = false,

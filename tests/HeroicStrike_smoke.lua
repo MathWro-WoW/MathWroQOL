@@ -109,6 +109,7 @@ local function flush()
 end
 local addon = { db = { heroicStrike = { enabled = false } } }
 SlashCmdList = {}
+function GetBuildInfo() return "12.1.0", "70000", "", 120100 end
 assert(loadfile("Core.lua"))("MathWroQOL", addon)
 function addon:RegisterFeature(feature) self.feature = feature end
 

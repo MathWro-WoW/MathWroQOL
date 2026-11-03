@@ -913,7 +913,8 @@ local function BuildGeneralPanel()
         sc,
         auctionCard,
         "Folio Equipment Sets",
-        "Save, apply, and clear Folio setups from the Omnium Folio interface."
+        addon.isForever and "Retail only: the Omnium Folio is not available in WoW Forever."
+            or "Save, apply, and clear Folio setups from the Omnium Folio interface."
     )
 
     local folioEnableCB
@@ -922,6 +923,7 @@ local function BuildGeneralPanel()
             return addon.db.folioEquipmentSets and addon.db.folioEquipmentSets.enabled == true
         end,
         function(val)
+            if addon.isForever then return end
             if InCombatLockdown() then
                 folioEnableCB:Refresh()
                 return
@@ -938,12 +940,13 @@ local function BuildGeneralPanel()
     folioGuide:SetPoint("TOPLEFT", folioEnableCB, "BOTTOMLEFT", 20, -6)
     folioGuide:SetWidth(430)
     folioGuide:SetJustifyH("LEFT")
-    folioGuide:SetText("Open Omnium Folio to manage equipment-set Folio setups.")
+    folioGuide:SetText(addon.isForever and "This module is unavailable on WoW Forever."
+        or "Open Omnium Folio to manage equipment-set Folio setups.")
     folioCard:SetBottomWidget(folioGuide, 10)
 
     local function refreshFolioToggle()
         folioEnableCB:Refresh()
-        local editable = not InCombatLockdown()
+        local editable = not addon.isForever and not InCombatLockdown()
         folioEnableCB:SetEnabled(editable)
         folioEnableCB:SetAlpha(editable and 1 or 0.4)
     end
@@ -2194,13 +2197,15 @@ local function BuildCDMPluginsPanel()
         sc,
         card,
         "Arms Warrior — Heroic Strike",
-        "Show Heroic Strike while its proc is available. The companion sits beside EllesmereUI's Buffs row when its CDM is enabled, or Blizzard's Buff Icons viewer otherwise; it is not a sortable CDM entry."
+        addon.isForever and "Retail only: this companion tracks the Midnight Arms proc, not Forever's Heroic Strike."
+            or "Show Heroic Strike while its proc is available. The companion sits beside EllesmereUI's Buffs row when its CDM is enabled, or Blizzard's Buff Icons viewer otherwise; it is not a sortable CDM entry."
     )
     local heroicCB = MakeCheckbox(heroicContent, "Enable Heroic Strike proc icon", 12, -2,
         function()
             return addon.db.heroicStrike.enabled
         end,
         function(value)
+            if addon.isForever then return end
             addon.db.heroicStrike.enabled = value
             addon:NotifyFeature("heroicStrike")
         end
@@ -2231,6 +2236,7 @@ local function BuildCDMPluginsPanel()
     heroicHelp:SetJustifyH("LEFT")
     heroicHelp:SetText("Arms specialization only. EllesmereUI: follows the Buffs row's icon size, spacing, appearance and visibility. An empty row shows the proc at its starting position. For vertical rows, Right keeps the growth end; Left uses the opposite end. Without EllesmereUI CDM, enable Blizzard's Cooldown Manager. Glow appears only with the proc. No Masque dependency.")
     heroicCard:SetBottomWidget(heroicHelp, 12)
+    if addon.isForever then SetChildrenEnabled(heroicContent, false) end
 
     return panel
 end
@@ -3005,7 +3011,7 @@ local function BuildCombatTrackerPanel()
         end
 
         local function getItemRank(id)
-            local _, itemLink = GetItemInfo(id)
+            local _, itemLink = C_Item.GetItemInfo(id)
             if itemLink then
                 local rank = C_TradeSkillUI.GetItemCraftedQualityByItemInfo(itemLink)
                 if rank then return rank end
@@ -3217,7 +3223,7 @@ local function BuildCombatTrackerPanel()
                     row.bg:SetColorTexture(1, 1, 1, 0.02)
                 end
 
-                local itemName, _, _, _, _, _, _, _, _, itemIcon = GetItemInfo(id)
+                local itemName, _, _, _, _, _, _, _, _, itemIcon = C_Item.GetItemInfo(id)
                 if itemIcon then
                     row.iconTex:SetTexture(itemIcon)
                 else

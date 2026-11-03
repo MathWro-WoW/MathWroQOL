@@ -172,6 +172,7 @@ addon.db.bloodlustTracker = {
     enabled = false, point = "CENTER", x = 0, y = 90, iconSize = 40, iconZoom = 8, glowType = "none",
 }
 SlashCmdList = {}
+function GetBuildInfo() return "12.1.0", "70000", "", 120100 end
 assert(loadfile("Core.lua"))("MathWroQOL", addon)
 function addon:RegisterFeature(feature)
     self.features = self.features or {}

@@ -3,7 +3,7 @@ local CT = addon.combatTracker
 
 -- ── Known consumable item IDs ─────────────────────────────────────────────────
 -- Midnight (12.x) item IDs.  Verify in-game:
---   /script local n=GetItemInfo(ITEMID); print(n)
+--   /script local n=C_Item.GetItemInfo(ITEMID); print(n)
 -- Use the options panel "Custom Items" field to add new IDs without code changes.
 local CONSUMABLE_IDS = {
     combatPotions = {
@@ -49,13 +49,6 @@ local HEALTHSTONE_CD_SPELL = 6262
 
 -- Fallback icon shown when hideIfMissing=false and item is not in bags
 local FALLBACK_ICON = 134400  -- classic potion flask icon
-
-local function getItemSpell(itemID)
-    if C_Item and C_Item.GetItemSpell then
-        return C_Item.GetItemSpell(itemID)
-    end
-    return GetItemSpell(itemID)
-end
 
 -- Builds the default display order from enabled categories + custom items.
 -- Used to populate itemOrder when empty and by Config.lua to reset order.
@@ -195,10 +188,10 @@ function consumables:ScanBags()
             elseif found[id] or showMissing then
                 local f = found[id]
                 if not f then
-                    local _, _, _, _, _, _, _, _, _, itemIcon = GetItemInfo(id)
+                    local _, _, _, _, _, _, _, _, _, itemIcon = C_Item.GetItemInfo(id)
                     f = { icon = itemIcon or FALLBACK_ICON, count = 0 }
                 end
-                local _, spellID = getItemSpell(id)
+                local _, spellID = C_Item.GetItemSpell(id)
                 if tracked[id] == "healthstone" then
                     spellID = HEALTHSTONE_CD_SPELL
                 end

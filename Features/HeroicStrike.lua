@@ -1,4 +1,5 @@
 local _, addon = ...
+if addon.isForever then return end
 
 local HeroicStrike = { name = "heroicStrike" }
 addon:RegisterFeature(HeroicStrike)

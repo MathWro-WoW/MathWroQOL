@@ -1,12 +1,40 @@
 # MathWro QOL
 
-A personal World of Warcraft addon for quality-of-life tweaks. Built for Midnight patch 12.1.0 (`120100`).
+A personal World of Warcraft addon for quality-of-life tweaks. Targets Retail Midnight 12.1.0 (`120100`) and WoW Forever 1.60.1 (`16001`).
 
 ## Compatibility
 
-The addon targets Retail patch 12.1.0. `Buff Health Color` uses Blizzard's secure Aura Container system, so restricted combat aura presence stays engine-managed instead of being read by addon Lua. EllesmereUI Raid Frames provides its own Aura Container-based buff indicators and MathWroQOL does not duplicate that runtime.
+Retail loads `MathWroQOL.toc`; Forever loads `MathWroQOL_Camelot.toc`. Both manifests ship in one package, use the same Lua files, and retain a single interface number each. Keep their version, dependencies, SavedVariables, and file lists synchronized. The existing BigWigs release workflow discovers both clients automatically; no second CurseForge project is needed.
 
-Provider integrations are optional and remain inactive when their provider is unavailable. CooldownManagerCentered viewer skinning requires both CooldownManagerCentered and Masque to be loaded.
+Forever uses the modern Mainline UI/API family, including Midnight's secret-value restrictions and secure Aura Containers—not the Classic API. The audit below uses the exported Blizzard UI for **Forever 1.60.1.70707**. **Shared** means the required API/UI path exists; it does not mean the feature has been tested in-game on Forever.
+
+| Feature | Forever compatibility | Limits |
+|---|---|---|
+| Game Menu scale, dragging, Reset Position | Shared | Native pooled Game Menu and frame APIs are present. |
+| CDM button and shortcuts | Shared, conditional | Requires Blizzard's Cooldown Manager UI; class/spell coverage is supplied by Blizzard. |
+| Auction House filters | Shared | Uses modern auction filters. “Current expansion only” follows Forever's own item data. |
+| Automatic combat logging | Shared | Dungeons, raids, and battlegrounds where available; Mythic+, scenarios, and other absent content types do not become available through the addon. Max-level gating uses the client-reported cap. |
+| Camera distance and Spell Queue Window | Shared | Opt-in enforcement through `C_CVar`; no changes while disabled. |
+| Edit Mode Nudge | Shared | Native Edit Mode and bundled LibEditMode; Ellesmere Unlock Mode also requires its compatible provider module. |
+| Combat Tracker: trinkets | Shared | Discovers equipped on-use items dynamically. |
+| Combat Tracker: racials | Data-limited | Tracks known IDs in the existing catalog. Forever-specific racial IDs, including Skyborne abilities, are not cataloged. |
+| Combat Tracker: consumables | Data-limited | Built-in potion catalog is Midnight-specific. Add Forever item IDs under **Custom Items**; custom items use their own item-use spell. Healthstone coverage is limited to cataloged item IDs. |
+| External and Bloodlust trackers | Data-limited | Secure aura icons/sounds use shared APIs, but only cataloged buff IDs can match. Retail-only buffs and different Forever spell ranks/IDs do not gain automatic equivalents. |
+| Vehicle Bar visibility | Provider-dependent | Requires compatible ElvUI or EllesmereUI Action Bars and a relevant vehicle/override state. |
+| Buff Health Color | Provider/data-dependent | Requires compatible ElvUI and matching spell IDs. Built-ins use Retail healer data; custom profiles can use Forever spell IDs. Retail specialization filters are unavailable when the client's deprecated specialization globals are absent; use all-spec custom profiles. Ellesmere Raid Frames provides its own indicators. |
+| CMC Masque skinning | Provider-dependent | Requires compatible CooldownManagerCentered and Masque plus populated Blizzard viewers. |
+| Arms Heroic Strike proc companion | Retail only | Tracks Midnight's temporary Arms spell, not Forever's Heroic Strike. Runtime is not registered and settings are disabled on Forever. |
+| Folio Equipment Sets | Retail only | Omnium Folio system/tree IDs are Retail-specific. Runtime is not registered and settings are disabled on Forever, even if saved settings enable them. |
+
+Provider integrations remain inactive when their provider is unavailable. Their presence in this table is not a certification of a third-party addon's Forever release. No deprecated global API shim or Classic API fork is installed.
+
+**Install:** extract the same `MathWroQOL` folder into each client's `Interface/AddOns` directory (`_retail_` and `_forever_`). Leave both TOCs in the folder. Each client's WTF directory keeps its own settings; this addon does not copy Retail settings into Forever.
+
+**Launch validation:** load Forever, open `/mqol`, check the disabled Retail-only controls, then exercise enabled features with that character's actual items/spells and optional providers. Test cooldowns and aura icons in combat, menu positioning, Edit Mode dragging, `/reload`, and a full logout/relaunch for saved settings. Check `!BugGrabber`/BugSack for errors. Early beta builds had community-reported SavedVariables loading failures; persistence on the launch client still needs an in-game check. No macro/CVar persistence workaround is included.
+
+**Developer checks:** run `lua tests/ClientFeatures_smoke.lua` and `lua tests/CombatTracker_MainlineNamespaces_smoke.lua` alongside the existing feature smoke suite, then `luac -p Core.lua Config.lua Features/*.lua tests/*.lua`. These harnesses cover client gating, namespaced tracker calls, and existing feature behavior, not Blizzard's live UI or third-party provider compatibility.
+
+Sources: [Blizzard Forever UI source, build 70707](https://github.com/Gethe/wow-ui-source/tree/aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16), [Forever API notes and TOC aliases](https://warcraft.wiki.gg/wiki/Patch_1.60.1/API_changes/notes), [BigWigs multi-client packaging](https://github.com/BigWigsMods/packager#building-for-multiple-game-versions), [early beta API/persistence measurements](https://github.com/Thunderz96/forever-addon-kit).
 
 ## Features
 

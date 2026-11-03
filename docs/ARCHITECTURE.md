@@ -7,11 +7,16 @@ Canonical reference for architecture, code style, and WoW API patterns.
 
 ## Interface Version & TOC
 
-- Target: `120100` (Midnight 12.1.0). **Single value only** — the BigWigs packager breaks on comma-separated values.
-- The `.toc` filename must exactly match the addon folder name: `MathWroQOL.toc` inside `MathWroQOL/`. Mismatch = addon invisible in-game.
+- Retail target: `120100` (Midnight 12.1.0) in `MathWroQOL.toc`. Forever target: `16001` (1.60.1) in `MathWroQOL_Camelot.toc`. **Single value per TOC only** — do not combine the clients into a comma-separated interface list.
+- The fallback TOC basename must match the addon folder (`MathWroQOL/MathWroQOL.toc`); client-specific manifests use recognized suffixes such as `MathWroQOL_Camelot.toc`. Do not rename the addon folder independently.
 - Any hardcoded addon name strings (e.g. `ADDON_LOADED` checks) must use `"MathWroQOL"`.
 - Optional addon integrations are declared via `## OptionalDeps:` so ElvUI, EllesmereUI modules, Masque, and CooldownManagerCentered load first when present.
 - The settings subtitle reads `## Version:` through `C_AddOns.GetAddOnMetadata`; keep the release version in the TOC rather than duplicating it in Config.lua.
+- Forever is a Mainline-family game type (`Camelot`, with `Forever` as a client alias), not a Classic API client. The base TOC remains Retail's fallback; the suffixed TOC is selected by Forever. Keep both file lists and all metadata except `Interface` synchronized. BigWigs Packager `@v2` discovers both TOCs and advertises both game versions without a second release job.
+- `Core.lua` sets `addon.isForever` from the interface band `16000 <= interface < 17000`. Do not distinguish the clients with `WOW_PROJECT_ID`: both report Mainline. Do not use `interface >= 100000` to select modern APIs.
+- Heroic Strike and Folio Equipment Sets return before feature registration on Forever; Config disables their controls with a Retail-only explanation. Saved enabled settings cannot activate either runtime. Other features share the Mainline implementation; the README compatibility table records provider and game-data limits.
+- Use current namespaces (`C_Item.GetItemInfo`/`GetItemSpell`/`IsItemDataCachedByID`, `C_SpellBook.IsSpellKnown`, `C_Spell.GetSpellTexture`, `C_CVar`) rather than depending on deprecated global shims. Do not invent Forever catalog IDs from Retail names.
+- Forever source audit baseline: [1.60.1.70707](https://github.com/Gethe/wow-ui-source/tree/aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16). Shared APIs do not certify third-party providers or prove in-game behavior. Validate combat, `/reload`, and cold-start settings persistence on each client.
 
 ---
 

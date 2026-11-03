@@ -5,7 +5,7 @@ local CT = addon.combatTracker
 -- Key: select(2, UnitRace("player")) — non-localised English race string
 -- Each entry: { spellID, name } where name is used for the per-name toggle.
 -- Multiple entries per race handle class variants (e.g. Blood Fury has 3 spell IDs).
--- Only the first matching IsSpellKnown() entry per name is used.
+-- Only the first matching C_SpellBook.IsSpellKnown() entry per name is used.
 local RACIAL_DATA = {
     ["Human"]              = { { spellID=59752,  name="Every Man for Himself" } },
     ["Dwarf"]              = { { spellID=20594,  name="Stoneform" } },
@@ -93,7 +93,7 @@ function racials:RebuildIcons()
     local active   = {}  -- not hidden
     local allKnown = {}  -- known (used for Config panel toggle list)
     for _, entry in ipairs(spellList) do
-        if not seen[entry.name] and IsSpellKnown(entry.spellID) then
+        if not seen[entry.name] and C_SpellBook.IsSpellKnown(entry.spellID) then
             seen[entry.name] = true
             table.insert(allKnown, entry)
             if not db.racials.hiddenSpells[entry.name] then
@@ -134,8 +134,7 @@ function racials:RebuildIcons()
     for i, btn in ipairs(self.buttons) do
         local entry = active[i]
         if entry then
-            local icon = C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(entry.spellID)
-                or GetSpellTexture(entry.spellID)
+            local icon = C_Spell.GetSpellTexture(entry.spellID)
             btn.icon:SetTexture(icon)
             btn._spellID = entry.spellID
             btn:Show()
@@ -164,9 +163,9 @@ end
 function racials:Initialize()
     local self = self  -- upvalue for closures
 
-    -- Populate _allRacialNames from static data (no IsSpellKnown check needed).
+    -- Populate _allRacialNames from static data (no C_SpellBook.IsSpellKnown check needed).
     -- This is used by the Config panel so toggles appear immediately on panel open,
-    -- even before RebuildIcons() has run (where IsSpellKnown may return false at login).
+    -- even before RebuildIcons() has run (where C_SpellBook.IsSpellKnown may return false at login).
     local _, raceKey = UnitRace("player")
     local spellList  = RACIAL_DATA[raceKey] or {}
     local seenNames  = {}

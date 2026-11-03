@@ -18,20 +18,6 @@ function trinkets:GetIcons()
     return visible
 end
 
-local function getItemSpell(itemID)
-    if C_Item and C_Item.GetItemSpell then
-        return C_Item.GetItemSpell(itemID)
-    end
-    return GetItemSpell(itemID)
-end
-
-local function isItemDataCached(itemID)
-    if C_Item and C_Item.IsItemDataCachedByID then
-        return C_Item.IsItemDataCachedByID(itemID)
-    end
-    return GetItemInfo(itemID) ~= nil
-end
-
 local function requestItemData(itemID)
     if not itemID then return end
     trinkets.pendingItems[itemID] = true
@@ -56,10 +42,10 @@ function trinkets:RebuildIcons()
     for _, slotID in ipairs(TRINKET_SLOTS) do
         local itemID = GetInventoryItemID("player", slotID)
         if itemID and not excludedItems[itemID] then
-            local spellName, spellID = getItemSpell(itemID)
+            local spellName, spellID = C_Item.GetItemSpell(itemID)
             local isOnUse            = spellName ~= nil
             local icon               = GetInventoryItemTexture("player", slotID)
-            local isCached           = isItemDataCached(itemID)
+            local isCached           = C_Item.IsItemDataCachedByID(itemID)
 
             if not icon or not isCached then
                 requestItemData(itemID)
