@@ -909,48 +909,6 @@ local function BuildGeneralPanel()
 
     auctionCard:SetBottomWidget(ahUsableCB, 10)
 
-    local folioCard, folioContent = MakeCard(
-        sc,
-        auctionCard,
-        "Folio Equipment Sets",
-        addon.isForever and "Retail only: the Omnium Folio is not available in WoW Forever."
-            or "Save, apply, and clear Folio setups from the Omnium Folio interface."
-    )
-
-    local folioEnableCB
-    folioEnableCB = MakeCheckbox(folioContent, "Enable Folio Equipment Sets", 0, 0,
-        function()
-            return addon.db.folioEquipmentSets and addon.db.folioEquipmentSets.enabled == true
-        end,
-        function(val)
-            if addon.isForever then return end
-            if InCombatLockdown() then
-                folioEnableCB:Refresh()
-                return
-            end
-            addon.db.folioEquipmentSets = addon.db.folioEquipmentSets or { characters = {} }
-            addon.db.folioEquipmentSets.enabled = val
-            addon:NotifyFeature("folioEquipmentSets")
-        end
-    )
-    folioEnableCB:ClearAllPoints()
-    folioEnableCB:SetPoint("TOPLEFT", folioContent, "TOPLEFT", 12, -2)
-
-    local folioGuide = folioContent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    folioGuide:SetPoint("TOPLEFT", folioEnableCB, "BOTTOMLEFT", 20, -6)
-    folioGuide:SetWidth(430)
-    folioGuide:SetJustifyH("LEFT")
-    folioGuide:SetText(addon.isForever and "This module is unavailable on WoW Forever."
-        or "Open Omnium Folio to manage equipment-set Folio setups.")
-    folioCard:SetBottomWidget(folioGuide, 10)
-
-    local function refreshFolioToggle()
-        folioEnableCB:Refresh()
-        local editable = not addon.isForever and not InCombatLockdown()
-        folioEnableCB:SetEnabled(editable)
-        folioEnableCB:SetAlpha(editable and 1 or 0.4)
-    end
-
     local function refreshGeneralControls()
         local gameMenu = addon.db.gameMenu or {}
         gmSlider:SetValue(gameMenu.scale or 1.0)
@@ -968,11 +926,54 @@ local function BuildGeneralPanel()
 
         updateDragGatekeeper()
         updateCDMGatekeeper()
-        refreshFolioToggle()
+    end
+
+    panel:HookScript("OnShow", refreshGeneralControls)
+    refreshGeneralControls()
+
+    if addon.isForever then return panel end
+
+    local folioCard, folioContent = MakeCard(
+        sc,
+        auctionCard,
+        "Folio Equipment Sets",
+        "Save, apply, and clear Folio setups from the Omnium Folio interface."
+    )
+
+    local folioEnableCB
+    folioEnableCB = MakeCheckbox(folioContent, "Enable Folio Equipment Sets", 0, 0,
+        function()
+            return addon.db.folioEquipmentSets and addon.db.folioEquipmentSets.enabled == true
+        end,
+        function(val)
+            if InCombatLockdown() then
+                folioEnableCB:Refresh()
+                return
+            end
+            addon.db.folioEquipmentSets = addon.db.folioEquipmentSets or { characters = {} }
+            addon.db.folioEquipmentSets.enabled = val
+            addon:NotifyFeature("folioEquipmentSets")
+        end
+    )
+    folioEnableCB:ClearAllPoints()
+    folioEnableCB:SetPoint("TOPLEFT", folioContent, "TOPLEFT", 12, -2)
+
+    local folioGuide = folioContent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    folioGuide:SetPoint("TOPLEFT", folioEnableCB, "BOTTOMLEFT", 20, -6)
+    folioGuide:SetWidth(430)
+    folioGuide:SetJustifyH("LEFT")
+    folioGuide:SetText("Open Omnium Folio to manage equipment-set Folio setups.")
+    folioCard:SetBottomWidget(folioGuide, 10)
+
+    local function refreshFolioToggle()
+        folioEnableCB:Refresh()
+        local editable = not InCombatLockdown()
+        folioEnableCB:SetEnabled(editable)
+        folioEnableCB:SetAlpha(editable and 1 or 0.4)
     end
 
     panel:HookScript("OnShow", function()
-        refreshGeneralControls()
+        refreshFolioToggle()
         panel:RegisterEvent("PLAYER_REGEN_DISABLED")
         panel:RegisterEvent("PLAYER_REGEN_ENABLED")
     end)
@@ -983,7 +984,7 @@ local function BuildGeneralPanel()
     panel:SetScript("OnEvent", function()
         if panel:IsShown() then refreshFolioToggle() end
     end)
-    refreshGeneralControls()
+    refreshFolioToggle()
 
     return panel
 end
@@ -2193,19 +2194,19 @@ local function BuildCDMPluginsPanel()
 
     card:SetBottomWidget(viewerContainer, 10)
 
+    if addon.isForever then return panel end
+
     local heroicCard, heroicContent = MakeCard(
         sc,
         card,
         "Arms Warrior — Heroic Strike",
-        addon.isForever and "Retail only: this companion tracks the Midnight Arms proc, not Forever's Heroic Strike."
-            or "Show Heroic Strike while its proc is available. The companion sits beside EllesmereUI's Buffs row when its CDM is enabled, or Blizzard's Buff Icons viewer otherwise; it is not a sortable CDM entry."
+        "Show Heroic Strike while its proc is available. The companion sits beside EllesmereUI's Buffs row when its CDM is enabled, or Blizzard's Buff Icons viewer otherwise; it is not a sortable CDM entry."
     )
     local heroicCB = MakeCheckbox(heroicContent, "Enable Heroic Strike proc icon", 12, -2,
         function()
             return addon.db.heroicStrike.enabled
         end,
         function(value)
-            if addon.isForever then return end
             addon.db.heroicStrike.enabled = value
             addon:NotifyFeature("heroicStrike")
         end
@@ -2236,7 +2237,6 @@ local function BuildCDMPluginsPanel()
     heroicHelp:SetJustifyH("LEFT")
     heroicHelp:SetText("Arms specialization only. EllesmereUI: follows the Buffs row's icon size, spacing, appearance and visibility. An empty row shows the proc at its starting position. For vertical rows, Right keeps the growth end; Left uses the opposite end. Without EllesmereUI CDM, enable Blizzard's Cooldown Manager. Glow appears only with the proc. No Masque dependency.")
     heroicCard:SetBottomWidget(heroicHelp, 12)
-    if addon.isForever then SetChildrenEnabled(heroicContent, false) end
 
     return panel
 end

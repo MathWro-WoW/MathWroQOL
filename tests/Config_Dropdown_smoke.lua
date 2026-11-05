@@ -6,17 +6,24 @@ local inCombat = false
 local methods = {}
 for _, name in ipairs({ "SetPoint", "ClearAllPoints", "SetSize", "SetWidth", "SetHeight",
     "SetBackdrop", "SetBackdropColor", "SetBackdropBorderColor", "SetTextColor", "SetJustifyH",
-    "EnableMouseWheel", "SetScrollChild", "EnableMouse", "SetAlpha", "SetDefaultText" }) do
+    "EnableMouseWheel", "SetScrollChild", "EnableMouse", "SetAlpha", "SetDefaultText",
+    "SetMinMaxValues", "SetValueStep", "SetObeyStepOnDrag", "Hide" }) do
     methods[name] = function() end
 end
 function methods:SetText(text) self.text = text end
 methods.OverrideText = methods.SetText
+function methods:SetFormattedText(format, ...) self.text = string.format(format, ...) end
+function methods:GetName() return self.name end
+function methods:SetValue(value)
+    if self.scripts.OnValueChanged then self.scripts.OnValueChanged(self, value, false) end
+end
 function methods:SetScript(event, callback) self.scripts[event] = callback end
 function methods:HookScript(event, callback)
     local previous = self.scripts[event]
     self.scripts[event] = function(...) if previous then previous(...) end; callback(...) end
 end
 function methods:RegisterEvent() end
+function methods:UnregisterEvent() end
 function methods:GetChildren() return unpack(self.children) end
 function methods:GetRegions() return unpack(self.regions) end
 function methods:GetParent() return self.parent end
@@ -35,10 +42,15 @@ function methods:CreateFontString()
 end
 methods.CreateTexture = methods.CreateFontString
 function CreateFrame(kind, name, parent)
-    local frame = setmetatable({ kind = kind, parent = parent, scripts = {}, children = {}, regions = {}, enabled = true, pool = {} }, { __index = methods })
+    local frame = setmetatable({ kind = kind, name = name, parent = parent, scripts = {}, children = {}, regions = {}, enabled = true, pool = {} }, { __index = methods })
     frames[#frames + 1] = frame
     if parent then parent.children[#parent.children + 1] = frame end
     if kind == "CheckButton" then frame.Text = frame:CreateFontString() end
+    if kind == "Slider" and name then
+        for _, suffix in ipairs({ "Low", "High", "Text" }) do
+            _G[name .. suffix] = frame:CreateFontString()
+        end
+    end
     return frame
 end
 local rootMethods = {}
@@ -168,3 +180,64 @@ local unavailable
 for _, row in ipairs(soundDropdown.menu.rows) do if row.item.value == "AirHorn" then unavailable = row.item end end
 assert(unavailable and settings.sound == "AirHorn" and not preview.enabled, "unavailable selections must remain visible without enabling a replacement preview")
 print("Config dropdown smoke PASS: live row stability, late media, selection, preview, and missing packs")
+
+-- Client gating must omit whole cards, not leave disabled controls or headers.
+-- Removing either settings gate must expose an unsupported card and fail here.
+local function findText(first, text)
+    for index = first, #frames do
+        local frame = frames[index]
+        if frame.Text and frame.Text.text == text then return frame end
+        for _, region in ipairs(frame.regions) do
+            if region.text == text then return region end
+        end
+    end
+end
+
+for _, client in ipairs({
+    { interface = 16001, retail = false },
+    { interface = 120100, retail = true },
+}) do
+    GetBuildInfo = function() return nil, nil, nil, client.interface end
+    SlashCmdList = {}
+    MathWroQOLDB = nil
+    local clientAddon = {}
+    assert(loadfile("Core.lua"))("MathWroQOL", clientAddon)
+    local coreFrame = frames[#frames]
+    coreFrame.scripts.OnEvent(coreFrame, "ADDON_LOADED", "MathWroQOL")
+    clientAddon.db.heroicStrike.enabled = true
+    clientAddon.db.folioEquipmentSets.enabled = true
+    assert(loadfile("Config.lua"))("MathWroQOL", clientAddon)
+    local onLoad = frames[#frames].scripts.OnEvent
+    local first = #frames + 1
+    local general = upvalue(onLoad, "BuildGeneralPanel")()
+    local plugins = upvalue(onLoad, "BuildCDMPluginsPanel")()
+    general.scripts.OnShow(general)
+    inCombat = true
+    if general.scripts.OnEvent then general.scripts.OnEvent(general, "PLAYER_REGEN_DISABLED") end
+    inCombat = false
+    if general.scripts.OnEvent then general.scripts.OnEvent(general, "PLAYER_REGEN_ENABLED") end
+    if general.scripts.OnHide then general.scripts.OnHide(general) end
+
+    assert((findText(first, "Folio Equipment Sets") ~= nil) == client.retail,
+        "Folio card must only appear on Retail")
+    assert((findText(first, "Arms Warrior — Heroic Strike") ~= nil) == client.retail,
+        "Heroic Strike card must only appear on Retail")
+    assert((findText(first, "Enable Folio Equipment Sets") ~= nil) == client.retail,
+        "Folio toggle must only appear on Retail")
+    assert((findText(first, "Enable Heroic Strike proc icon") ~= nil) == client.retail,
+        "Heroic Strike toggle must only appear on Retail")
+    local shared = assert(findText(first, "Show CDM button in game menu"))
+    shared:SetChecked(true)
+    shared.scripts.OnClick(shared)
+    assert(clientAddon.db.cdmButton.enabled, "shared controls must remain usable on both clients")
+    assert(findText(first, "Enable Masque skinning"), "shared CDM plugin settings must remain available")
+    assert(clientAddon.db.heroicStrike.enabled and clientAddon.db.folioEquipmentSets.enabled,
+        "building settings must preserve saved Midnight-only preferences")
+    if client.retail then
+        local folio = findText(first, "Enable Folio Equipment Sets")
+        folio:SetChecked(false)
+        folio.scripts.OnClick(folio)
+        assert(not clientAddon.db.folioEquipmentSets.enabled, "Retail Folio toggle must remain usable")
+    end
+end
+print("Config client settings smoke PASS: Forever omission, Retail controls, shared settings, and saved preferences")
