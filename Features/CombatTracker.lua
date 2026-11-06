@@ -128,7 +128,8 @@ end
 function CT:GetHostKey(key)
     local db     = addon.db.combatTracker
     local target = db.frames[key].mergeInto
-    if target and target ~= key and self.frames[target] then
+    if sectionMap[key].managedBy then return key end
+    if target and target ~= key and self.frames[target] and not sectionMap[target].managedBy then
         return target
     end
     return key
@@ -157,7 +158,7 @@ function CT:LayoutSection(key)
         end
     end
     for _, sec in ipairs(sections) do
-        if sec.name ~= key and db.frames[sec.name].mergeInto == key then
+        if sec.name ~= key and self:GetHostKey(sec.name) == key then
             for _, btn in ipairs(sec:GetIcons()) do
                 table.insert(icons, btn)
             end
@@ -254,6 +255,7 @@ function CT:LayoutSection(key)
     frameDb.point = stableAnchor
     frameDb.x     = math.floor(stableX + 0.5)
     frameDb.y     = math.floor(stableY + 0.5)
+    if self.UpdateFoodActions then self:UpdateFoodActions() end
 end
 
 local FONT_OPTIONS = {
@@ -265,14 +267,16 @@ local FONT_OPTIONS = {
 
 local function canEditSection(key)
     local db = addon.db.combatTracker
-    return db.enabled and db.frames[key].enabled and not InCombatLockdown()
+    local parent = sectionMap[key].managedBy
+    return db.enabled and db.frames[key].enabled
+        and (not parent or db.frames[parent].enabled) and not InCombatLockdown()
 end
 
 function CT:UpdateSectionFrameSettings(frame, key, LibEditMode)
     local db = addon.db.combatTracker
     local textSections = { key }
     for _, sec in ipairs(sections) do
-        if sec.name ~= key and db.frames[sec.name].mergeInto == key then
+        if sec.name ~= key and self:GetHostKey(sec.name) == key then
             table.insert(textSections, sec.name)
         end
     end
@@ -441,7 +445,7 @@ function CT:CreateSectionFrame(key)
 
     local LibEditMode = LibStub and LibStub("LibEditMode", true)
     if LibEditMode then
-        local displayName = "MathWroQOL - CT " .. key:sub(1,1):upper() .. key:sub(2)
+        local displayName = "MathWroQOL - CT " .. (sectionMap[key].displayName or key:sub(1,1):upper() .. key:sub(2))
         LibEditMode:AddFrame(frame, function(_, _, point, x, y)
             if not canEditSection(key) then return end
             db.frames[key].point = point
@@ -472,8 +476,10 @@ function CT:Initialize()
 
     -- Let each section set up its event frame and do initial icon scan
     for _, sec in ipairs(sections) do
-        if sec.Initialize then sec:Initialize() end
-        sec:RebuildIcons()
+        if not sec.managedBy then
+            if sec.Initialize then sec:Initialize() end
+            sec:RebuildIcons()
+        end
     end
 
     self:Apply()
@@ -488,11 +494,14 @@ function CT:Apply()
         local frameDb = db.frames[sec.name]
         local frame   = self.frames[sec.name]
         if frame then
-            local isMerged = frameDb.mergeInto
-                and frameDb.mergeInto ~= sec.name
-                and self.frames[frameDb.mergeInto] ~= nil
+            local isMerged = self:GetHostKey(sec.name) ~= sec.name
+            local enabled = db.enabled and frameDb.enabled
+                and (not sec.managedBy or db.frames[sec.managedBy].enabled)
+            if not enabled then
+                for _, button in ipairs(sec.buttons) do button:Hide() end
+            end
 
-            if not db.enabled or not frameDb.enabled or isMerged then
+            if not enabled or isMerged then
                 frame:Hide()
             else
                 frame:Show()
@@ -500,11 +509,13 @@ function CT:Apply()
         end
     end
 
+    if self.UpdateFoodActions then self:UpdateFoodActions() end
+    if self.UpdateFoodMacros then self:UpdateFoodMacros() end
     if not db.enabled then return end
 
     -- Full data scan for all sections (handles enabled/disabled toggles, filter changes)
     for _, sec in ipairs(sections) do
-        sec:RebuildIcons()
+        if not sec.managedBy then sec:RebuildIcons() end
     end
 
     self:ApplyMasque()
@@ -522,6 +533,7 @@ local function CreateMasqueGroups()
         racials     = MSQ:Group("MathWroQOL", "CT Racials",     "MathWroQOL_CT_Racials"),
         trinkets    = MSQ:Group("MathWroQOL", "CT Trinkets",    "MathWroQOL_CT_Trinkets"),
         consumables = MSQ:Group("MathWroQOL", "CT Consumables", "MathWroQOL_CT_Consumables"),
+        foodWater   = MSQ:Group("MathWroQOL", "CT Food & Water", "MathWroQOL_CT_FoodWater"),
     }
 
     -- Re-apply layout when the user changes skin in the Masque UI.

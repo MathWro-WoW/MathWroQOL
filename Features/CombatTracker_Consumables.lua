@@ -132,6 +132,14 @@ local consumables = {
     cachedItems    = {},
 }
 
+-- This display is populated by the same bag scan, not a second inventory tracker.
+local foodWater = {
+    name = "foodWater",
+    displayName = "Food & Water",
+    managedBy = "consumables",
+    buttons = {},
+}
+
 local function requestItemData(self, itemID)
     if self.pendingItems[itemID] then return end
     self.pendingItems[itemID] = true
@@ -213,14 +221,65 @@ function consumables:GetIcons()
     return visible
 end
 
+foodWater.GetIcons = consumables.GetIcons
+function foodWater:RebuildIcons()
+    consumables:ScanBags()
+end
+
+local function updateButtons(owner, active)
+    local frameDb = addon.db.combatTracker.frames[owner.name]
+    local mg = CT._masqueGroups()
+    local group = mg and addon.db.combatTracker.masque.enabled and mg[owner.name]
+    local hostDb = addon.db.combatTracker.frames[CT:GetHostKey(owner.name)]
+    while #owner.buttons < #active do
+        local btn = CT.CreateButton()
+        btn._sectionName = owner.name
+        btn:SetSize(hostDb.iconWidth, hostDb.iconHeight)
+        table.insert(owner.buttons, btn)
+    end
+    for i, btn in ipairs(owner.buttons) do
+        if group and not btn._masqueRegistered then
+            CT._registerButtonMasque(group, btn)
+            btn._masqueRegistered = true
+        end
+        local entry = active[i]
+        btn._itemID = entry and entry.itemID
+        btn._category = entry and entry.category
+        btn._spellID = entry and entry.spellID
+        btn._isFoodWater = entry and entry.showSingleCount == true or false
+        if entry then
+            btn.icon:SetTexture(entry.icon)
+            if btn.countText then
+                local count = entry.count or 0
+                if frameDb.stackCountEnabled ~= false and (count > 1 or entry.showSingleCount) then
+                    btn.countText:SetText(tostring(count))
+                    btn.countText:Show()
+                else
+                    btn.countText:Hide()
+                end
+            end
+            btn:Show()
+        else
+            if btn.countText then btn.countText:Hide() end
+            btn:Hide()
+        end
+    end
+    CT:ApplySectionFont(owner.name)
+    CT:ApplyCooldownFont(owner.name)
+    CT:LayoutSection(CT:GetHostKey(owner.name))
+end
+
 -- Full bag scan. Builds active item list and updates button pool.
 function consumables:ScanBags()
     local db      = addon.db.combatTracker
     local frameDb = db.frames.consumables
 
     if not db.enabled or not frameDb.enabled then
-        for _, btn in ipairs(self.buttons) do btn:Hide() end
-        CT:LayoutSection(CT:GetHostKey("consumables"))
+        self.selectedFood, self.selectedWater = nil, nil
+        updateButtons(self, {})
+        if db.frames.foodWater then updateButtons(foodWater, {}) end
+        if CT.UpdateFoodActions then CT:UpdateFoodActions() end
+        if CT.UpdateFoodMacros then CT:UpdateFoodMacros() end
         return
     end
 
@@ -301,6 +360,7 @@ function consumables:ScanBags()
             end
         end
     end
+    self.selectedFood, self.selectedWater = foodCandidate, waterCandidate
 
     -- Build ordered active list using saved itemOrder (or default fallback)
     local active = {}
@@ -350,7 +410,6 @@ function consumables:ScanBags()
     end
     local activeByItemID = {}
     for _, entry in ipairs(active) do activeByItemID[entry.itemID] = entry end
-    local selectedDynamicItems = added
     if foodCandidate then
         local entry = activeByItemID[foodCandidate.itemID]
         if entry then
@@ -362,74 +421,41 @@ function consumables:ScanBags()
             }
             table.insert(active, entry)
             activeByItemID[entry.itemID] = entry
-            selectedDynamicItems[entry.itemID] = true
         end
     end
-    if waterCandidate and not selectedDynamicItems[waterCandidate.itemID] then
-        table.insert(active, {
-            itemID = waterCandidate.itemID, icon = waterCandidate.icon, count = waterCandidate.count,
-            category = "water", spellID = waterCandidate.spellID, showSingleCount = true,
-        })
-    end
-
-    -- Register any pre-existing pool buttons with Masque (if active)
-    local mg = CT._masqueGroups()
-    if mg and addon.db.combatTracker.masque.enabled and mg[self.name] then
-        for _, btn in ipairs(self.buttons) do
-            if not btn._masqueRegistered then
-                CT._registerButtonMasque(mg[self.name], btn)
-                btn._masqueRegistered = true
-            end
-        end
-    end
-
-    -- Grow pool if needed
-    local hostKey = CT:GetHostKey(self.name)
-    local frameW  = addon.db.combatTracker.frames[hostKey].iconWidth
-    local frameH  = addon.db.combatTracker.frames[hostKey].iconHeight
-    while #self.buttons < #active do
-        local btn = CT.CreateButton()
-        btn._sectionName = self.name
-        btn:SetSize(frameW, frameH)  -- pre-size before Masque registers the button
-        if mg and addon.db.combatTracker.masque.enabled and mg[self.name] then
-            CT._registerButtonMasque(mg[self.name], btn)
-            btn._masqueRegistered = true
-        end
-        table.insert(self.buttons, btn)
-    end
-
-    -- Update pool entries
-    for i, btn in ipairs(self.buttons) do
-        local entry = active[i]
+    if waterCandidate then
+        local entry = activeByItemID[waterCandidate.itemID]
         if entry then
-            btn.icon:SetTexture(entry.icon)
-            btn._itemID   = entry.itemID
-            btn._category = entry.category
-            btn._spellID  = entry.spellID
-            if btn.countText then
-                local count   = entry.count or 0
-                local enabled = addon.db.combatTracker.frames.consumables.stackCountEnabled ~= false
-                if enabled and (count > 1 or entry.showSingleCount) then
-                    btn.countText:SetText(tostring(count))
-                    btn.countText:Show()
-                else
-                    btn.countText:Hide()
-                end
-            end
-            btn:Show()
+            entry.showSingleCount = true
         else
-            btn._itemID   = nil
-            btn._category = nil
-            btn._spellID  = nil
-            if btn.countText then btn.countText:Hide() end
-            btn:Hide()
+            table.insert(active, {
+                itemID = waterCandidate.itemID, icon = waterCandidate.icon, count = waterCandidate.count,
+                category = "water", spellID = waterCandidate.spellID, showSingleCount = true,
+            })
         end
     end
 
-    CT:ApplySectionFont("consumables")
-    CT:ApplyCooldownFont("consumables")
+    local foodActive = {}
+    if db.frames.foodWater and db.frames.foodWater.enabled then
+        local regularActive = {}
+        for _, entry in ipairs(active) do
+            if entry.showSingleCount then
+                if foodCandidate and entry.itemID == foodCandidate.itemID then
+                    table.insert(foodActive, 1, entry)
+                else
+                    table.insert(foodActive, entry)
+                end
+            else
+                table.insert(regularActive, entry)
+            end
+        end
+        active = regularActive
+    end
+    updateButtons(self, active)
+    if db.frames.foodWater then updateButtons(foodWater, foodActive) end
+    if CT.UpdateFoodActions then CT:UpdateFoodActions() end
+    if CT.UpdateFoodMacros then CT:UpdateFoodMacros() end
     C_Timer.After(0, function() self:UpdateCooldowns() end)
-    CT:LayoutSection(CT:GetHostKey("consumables"))
 end
 
 function consumables:RebuildIcons()
@@ -437,12 +463,17 @@ function consumables:RebuildIcons()
 end
 
 -- Refreshes cooldown overlays through engine-owned duration objects.
-function consumables:UpdateCooldowns()
-    for _, btn in ipairs(self.buttons) do
+local function updateCooldowns(owner)
+    for _, btn in ipairs(owner.buttons) do
         if btn:IsShown() and btn._itemID then
             CT.UpdateButtonCooldownFromSpell(btn, btn._spellID)
         end
     end
+end
+
+function consumables:UpdateCooldowns()
+    updateCooldowns(self)
+    updateCooldowns(foodWater)
 end
 
 function consumables:QueueBagScan()
@@ -498,4 +529,5 @@ consumables.BuildDefaultOrder = buildDefaultOrder
 consumables.CONSUMABLE_IDS    = CONSUMABLE_IDS
 consumables.FLEETING_OF       = FLEETING_OF
 
+CT:RegisterSection(foodWater)
 CT:RegisterSection(consumables)

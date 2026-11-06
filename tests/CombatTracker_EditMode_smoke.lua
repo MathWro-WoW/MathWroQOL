@@ -216,6 +216,12 @@ local addon = {
                     stackCountEnabled = true, stackCountFontSize = 19, stackCountFont = "Fonts\\FRIZQT__.TTF",
                     cdCountEnabled = true, cdCountFontSize = 21, cdCountFont = "Fonts\\skurri.TTF",
                 },
+                foodWater = {
+                    point = "CENTER", x = 220, y = 140, layout = "horizontal", growDirection = "growRight", gridCols = 2,
+                    iconWidth = 36, iconHeight = 36, enabled = true,
+                    stackCountEnabled = true, stackCountFontSize = 12, stackCountFont = "Fonts\\FRIZQT__.TTF",
+                    cdCountEnabled = true, cdCountFontSize = 14, cdCountFont = "Fonts\\FRIZQT__.TTF",
+                },
             },
         },
     },
@@ -250,7 +256,20 @@ end
 local racials = makeSection("racials")
 local trinkets = makeSection("trinkets")
 local consumables = makeSection("consumables")
+local foodWater = makeSection("foodWater")
+foodWater.managedBy = "consumables"
+foodWater.displayName = "Food & Water"
+local rebuildFood = foodWater.RebuildIcons
+local rebuildConsumables = consumables.RebuildIcons
+local consumableScans = 0
+function consumables:RebuildIcons()
+    consumableScans = consumableScans + 1
+    rebuildFood(foodWater)
+    rebuildConsumables(self)
+end
+function foodWater:RebuildIcons() consumables:RebuildIcons() end
 tracker:Initialize()
+assert(consumableScans == 2, "managed food/water must not duplicate Initialize or Apply scans")
 EditModeManagerFrame.scripts.OnShow(EditModeManagerFrame)
 assert(editMode:IsInEditMode(), "the bundled library must enter Edit Mode before CT selections can be clicked")
 
@@ -358,6 +377,57 @@ assert(addon.db.combatTracker.frames.consumables.iconWidth == 64
     and consumables.buttons[1].width == 64 and consumables.buttons[1].height == 29,
     "native icon controls must immediately resize live icons")
 
+local foodSettings = clickAnchor(tracker.frames.foodWater)
+local foodWidth = settingNamed(foodSettings, "Icon width")
+widgetFor(foodWidth):OnSliderValueChanged(47)
+local foodStack = settingNamed(foodSettings, "Stack count font size")
+widgetFor(foodStack):OnSliderValueChanged(18)
+local foodFont = settingNamed(foodSettings, "Stack count font")
+choose(widgetFor(foodFont), "Fonts\\MORPHEUS.TTF")
+local foodCooldown = settingNamed(foodSettings, "Cooldown count font size")
+widgetFor(foodCooldown):OnSliderValueChanged(20)
+assert(foodWater.buttons[1].width == 47 and foodWater.buttons[1].countText.fontSize == 18
+    and foodWater.buttons[1].countText.fontPath == "Fonts\\MORPHEUS.TTF"
+    and foodWater.buttons[1].cooldown.cooldownText.fontSize == 20
+    and consumables.buttons[1].width == 64,
+    "food/water native appearance must belong to its independent frame")
+local foodFrame = tracker.frames.foodWater
+foodFrame:ClearAllPoints()
+foodFrame:SetPoint("CENTER", UIParent, "CENTER", 310, 110)
+editMode.frameCallbacks[foodFrame](foodFrame, "Modern", "CENTER", 310, 110)
+assert(addon.db.combatTracker.frames.foodWater.x ~= 220
+    and addon.db.combatTracker.frames.consumables.iconWidth == 64,
+    "food/water movement must save independently")
+inCombat = true
+foodWidth.set("Modern", 25)
+inCombat = false
+assert(addon.db.combatTracker.frames.foodWater.iconWidth == 47,
+    "food/water appearance must remain combat gated")
+addon.db.combatTracker.frames.foodWater.enabled = false
+foodWidth.set("Modern", 25)
+tracker:Apply()
+assert(addon.db.combatTracker.frames.foodWater.iconWidth == 47 and not foodFrame:IsShown()
+    and not foodWater.buttons[1]:IsShown(), "food/water own enable gate must hide its display and block edits")
+addon.db.combatTracker.frames.foodWater.enabled = true
+addon.db.combatTracker.frames.foodWater.mergeInto = "consumables"
+addon.db.combatTracker.frames.racials.mergeInto = "foodWater"
+assert(tracker:GetHostKey("foodWater") == "foodWater" and tracker:GetHostKey("racials") == "racials",
+    "managed food/water must neither merge nor become an ordinary merge target")
+addon.db.combatTracker.frames.foodWater.mergeInto = nil
+addon.db.combatTracker.frames.racials.mergeInto = nil
+addon.db.combatTracker.frames.consumables.enabled = false
+foodWidth.set("Modern", 30)
+assert(foodWidth.disabled() and addon.db.combatTracker.frames.foodWater.iconWidth == 47,
+    "food/water native settings must honor their parent section gate")
+tracker:Apply()
+assert(not foodFrame:IsShown() and not foodWater.buttons[1]:IsShown(),
+    "parent disable must hide the independent anchor and UIParent-owned food/water icons")
+addon.db.combatTracker.frames.consumables.enabled = true
+tracker:Apply()
+consumableSettings = clickAnchor(tracker.frames.consumables)
+width = settingNamed(consumableSettings, "Icon width")
+height = settingNamed(consumableSettings, "Icon height")
+
 -- Empty anchors retain their configured footprint, so users can select and size them.
 for _, button in ipairs(consumables.buttons) do button:Hide() end
 tracker:LayoutSection("consumables")
@@ -381,6 +451,8 @@ assert(addon.db.combatTracker.frames.consumables.iconWidth == savedWidth,
     "disabled Combat Tracker must not mutate native Combat Tracker settings")
 tracker:Apply()
 assert(not tracker.frames.consumables:IsShown(), "disabling Combat Tracker must hide its anchor")
+assert(not foodWater.buttons[1]:IsShown() and not racials.buttons[1]:IsShown(),
+    "master disable must hide actual UIParent-owned display icons")
 
 EditModeManagerFrame.scripts.OnHide(EditModeManagerFrame)
 assert(not editMode.internal.dialog:IsShown(), "leaving Edit Mode must clean up the floating dialog")

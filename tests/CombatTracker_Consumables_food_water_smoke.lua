@@ -109,8 +109,11 @@ function CreateFrame()
     return frame
 end
 
-local CT = {}
-function CT:RegisterSection(def) section = def end
+local CT = { sections = {} }
+function CT:RegisterSection(def)
+    self.sections[def.name] = def
+    section = def
+end
 function CT:GetHostKey(key) return key end
 function CT:ApplySectionFont() end
 function CT:ApplyCooldownFont() end
@@ -150,6 +153,12 @@ local addon = {
                     itemOrder = {},
                     iconWidth = 36,
                     iconHeight = 36,
+                    stackCountEnabled = true,
+                },
+                foodWater = {
+                    enabled = false,
+                    iconWidth = 42,
+                    iconHeight = 42,
                     stackCountEnabled = true,
                 },
             },
@@ -422,6 +431,53 @@ assert(section.buttons[1]._itemID == 800 and section.buttons[2]._itemID == 810,
     "turning mage priority off must restore normal food/water ranking")
 selectionDb.excludeBuffFood = false
 selectionDb.foodWaterPreference = "itemLevel"
+
+-- Splitting moves only the selected automatic food/water, including custom overlap.
+defineItem(9000, 9000, 1, 1)
+selectionDb.customItems = { [9000] = true, [800] = true }
+selectionDb.itemOrder = { 9000, 800 }
+selectionDb.hideIfMissing = true
+setBags({
+    { itemID = 9000, stackCount = 3 }, { itemID = 800, stackCount = 1 },
+    { itemID = 810, stackCount = 4 },
+})
+section:ScanBags()
+assert(#section:GetIcons() == 3, "combined display must retain custom consumables, food, and water")
+addon.db.combatTracker.frames.foodWater.enabled = true
+section:ScanBags()
+assert(#section:GetIcons() == 1 and section:GetIcons()[1]._itemID == 9000,
+    "separate frame must remove selected food/water from the ordinary consumables group")
+local foodWater = assert(CT.sections.foodWater, "food/water display must register independently")
+assert(#foodWater:GetIcons() == 2 and foodWater:GetIcons()[1]._itemID == 800
+    and foodWater:GetIcons()[1].count == "1" and foodWater:GetIcons()[2]._itemID == 810,
+    "separate display must preserve food-then-water ordering and custom-overlap single counts")
+selectionDb.customItems[810] = true
+selectionDb.itemOrder = { 9000, 810, 800 }
+bags[1][3].stackCount = 1
+section:ScanBags()
+assert(#section:GetIcons() == 1 and #foodWater:GetIcons() == 2
+    and foodWater:GetIcons()[1]._itemID == 800 and foodWater:GetIcons()[2]._itemID == 810
+    and foodWater:GetIcons()[2].count == "1",
+    "selected custom water must move once, after food, and retain its single-item count")
+addon.db.combatTracker.frames.foodWater.stackCountEnabled = false
+foodWater:RebuildIcons()
+assert(not foodWater:GetIcons()[1].countShown and selectionDb.stackCountEnabled,
+    "separate food/water count preferences must not change ordinary consumable text")
+addon.db.combatTracker.frames.foodWater.stackCountEnabled = true
+setBags({ { itemID = 9000, stackCount = 3 }, { itemID = 113509, stackCount = 2 } })
+section:ScanBags()
+assert(#foodWater:GetIcons() == 1 and foodWater:GetIcons()[1]._itemID == 113509,
+    "a split hybrid must remain a single icon without displacing ordinary consumables")
+selectionDb.enabled = false
+section:ScanBags()
+assert(#section:GetIcons() == 0 and #foodWater:GetIcons() == 0,
+    "disabling consumables must clear both combined and separate displays")
+selectionDb.enabled = true
+addon.db.combatTracker.frames.foodWater.enabled = false
+section:ScanBags()
+assert(#section:GetIcons() == 2 and #foodWater:GetIcons() == 0,
+    "turning separate display off must return food/water to the original group without duplicates")
+selectionDb.customItems, selectionDb.itemOrder = {}, {}
 
 -- Forever uses a separate verified catalog and retains item-spell cooldowns.
 addon.isForever = true

@@ -2444,6 +2444,7 @@ local function BuildCombatTrackerPanel()
             racials     = { point = "CENTER", x = -220, y = 200 },
             trinkets    = { point = "CENTER", x = 0, y = 200 },
             consumables = { point = "CENTER", x = 220, y = 200 },
+            foodWater   = { point = "CENTER", x = 220, y = 140 },
         }
         for key, def in pairs(defaults) do
             local f = addon.db.combatTracker.frames[key]
@@ -2912,8 +2913,55 @@ local function BuildCombatTrackerPanel()
         excludeBuffFoodCB:HookScript("OnLeave", function() GameTooltip:Hide() end)
         table.insert(refreshFns, function() excludeBuffFoodCB:Refresh() end)
 
+        local clickableFoodWaterCB = MakeCheckbox(parent, "Click food and water out of combat", 0, 0,
+            function() return addon.db.combatTracker.frames.consumables.clickableFoodWater == true end,
+            function(value)
+                if InCombatLockdown() then return end
+                addon.db.combatTracker.frames.consumables.clickableFoodWater = value
+                addon:NotifyFeature("combatTracker")
+            end)
+        clickableFoodWaterCB:ClearAllPoints()
+        clickableFoodWaterCB:SetPoint("TOPLEFT", excludeBuffFoodCB, "BOTTOMLEFT", 0, -4)
+        table.insert(refreshFns, function() clickableFoodWaterCB:Refresh() end)
+
+        local separateFoodWaterCB = MakeCheckbox(parent, "Show food and water in a separate frame", 0, 0,
+            function() return addon.db.combatTracker.frames.foodWater.enabled == true end,
+            function(value)
+                if InCombatLockdown() then return end
+                addon.db.combatTracker.frames.foodWater.enabled = value
+                addon:NotifyFeature("combatTracker")
+            end)
+        separateFoodWaterCB:ClearAllPoints()
+        separateFoodWaterCB:SetPoint("TOPLEFT", clickableFoodWaterCB, "BOTTOMLEFT", 0, -4)
+        separateFoodWaterCB:HookScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Separate Food & Water frame")
+            GameTooltip:AddLine("Enter Blizzard Edit Mode and click MathWroQOL - CT Food & Water to move it and configure its own icon size and text settings.", 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        separateFoodWaterCB:HookScript("OnLeave", function() GameTooltip:Hide() end)
+        table.insert(refreshFns, function() separateFoodWaterCB:Refresh() end)
+
+        local macroButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+        macroButton:SetSize(170, 24)
+        macroButton:SetText("Create Smart Macro")
+        macroButton:SetPoint("TOPLEFT", separateFoodWaterCB, "BOTTOMLEFT", 4, -10)
+        local macroStatus = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        macroStatus:SetPoint("TOPLEFT", macroButton, "BOTTOMLEFT", 0, -6)
+        macroStatus:SetWidth(430)
+        macroStatus:SetJustifyH("LEFT")
+        macroStatus:SetText("Creates MQOL Food and MQOL Water in General Macros. Updates follow this character's selections after combat.")
+        macroButton:SetScript("OnClick", function()
+            if InCombatLockdown() then return end
+            local _, message = addon.combatTracker:CreateFoodWaterMacros()
+            macroStatus:SetText(message)
+            FindScrollChildAndRecalc(macroButton)
+        end)
+        local macroSkin = ElvSkin()
+        if macroSkin then macroSkin:HandleButton(macroButton) end
+
         local foodSelectionGuide = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        foodSelectionGuide:SetPoint("TOPLEFT", excludeBuffFoodCB, "BOTTOMLEFT", 4, -6)
+        foodSelectionGuide:SetPoint("TOPLEFT", macroStatus, "BOTTOMLEFT", 0, -8)
         foodSelectionGuide:SetWidth(430)
         foodSelectionGuide:SetJustifyH("LEFT")
         foodSelectionGuide:SetText("Mage priority, when enabled, comes first. Highest required level wins within each group; Most in bags compares total counts at the same level.")

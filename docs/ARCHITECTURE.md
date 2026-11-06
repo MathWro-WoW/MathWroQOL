@@ -63,8 +63,10 @@ Defined in `MathWroQOL.toc`:
 26. `Features\CombatTracker_Racials.lua`
 27. `Features\CombatTracker_Trinkets.lua`
 28. `Features\CombatTracker_Consumables.lua`
-29. `Features\ExternalTracker.lua`
-30. `Features\FolioEquipmentSets.lua`
+29. `Features\CombatTracker_FoodActions.lua`
+30. `Features\CombatTracker_FoodMacros.lua`
+31. `Features\ExternalTracker.lua`
+32. `Features\FolioEquipmentSets.lua`
 
 ---
 
@@ -227,6 +229,12 @@ Consumables likewise select client-specific potion/Healthstone item families; or
 `excludeBuffFood` defaults false. With it enabled, food candidates must match verified restoration-only effect IDs (`FOOD_SPELL_IDS` or explicit hybrid IDs); a localized name match alone cannot prove absence of an additional buff. Unknown effects and known Nutritious Food are skipped. Filter before either dynamic selection so excluded hybrids cannot enter as water. This restriction applies only to automatic selections, not explicitly configured custom items. There is no aura scan, buff-tooltip parsing, or inference from the player's currently active buffs.
 
 `BAG_UPDATE`, `PLAYER_LEVEL_UP`, and requested `ITEM_DATA_LOAD_RESULT` completions coalesce into next-frame scans; deferring level-up allows `UnitLevel` to settle. Uncached item data is requested once while pending. Disabled sections do not scan. Food/water uses the existing button pool, fonts, Masque group, merge/layout path, and engine-owned cooldown display.
+
+`frames.foodWater.enabled` defaults false and selects an independent, non-mergeable Food & Water display. `CombatTracker_Consumables.lua` registers it as `managedBy = "consumables"` before the normal section. One bag scan partitions selected food/water into its own button pool, preserving hybrid/custom overlap de-duplication and food-first ordering. The framework skips duplicate managed-section scans while retaining independent Edit Mode position, size/text defaults, fonts, and Masque group. Parent/master disable hides both pools.
+
+`frames.consumables.clickableFoodWater` defaults false. `CombatTracker_FoodActions.lua`, loaded immediately after consumables in both TOCs, reuses at most two ordinary child overlays with Blizzard's `InsecureActionButtonTemplate`. Its native handler refuses combat dispatch; display frames remain unprotected and can still relayout in combat. Left-button release uses the selected item through native `type1 = "item"`/`item1` attributes, never a direct protected item-use call. Creation waits until outside combat; an inert regeneration listener handles combat reload and refreshes selection on exit. Disable, depletion, stale selection, and native Edit Mode clear click actions; the split and click options are independent.
+
+`CombatTracker_FoodMacros.lua` owns the explicit **Create Smart Macro** action. It creates `MQOL Food` and `MQOL Water` with `CreateMacro(..., nil)` in account/General slots, then enables `frames.consumables.smartFoodWaterMacros` (default false). Bag scans publish `selectedFood`/`selectedWater` before display de-duplication so both macros can target one hybrid, independent of click/split options. Macro bodies have an ownership marker, `#showtooltip`, and `/use [nocombat] item:ID`; no selection means no use command. Only owned account macros are edited, only outside combat, only when the body changes. Resolve indices after creation because account ordering can change. Preflight both name conflicts and required free slots; preserve character macros and unrelated General macros. Automatic updates never recreate deleted/renamed entries. Combat exit refreshes selection before updating; disabled tracker/section/toggles clear stale commands without scanning gameplay state. See [CreateMacro](https://warcraft.wiki.gg/wiki/API_CreateMacro) and [EditMacro](https://warcraft.wiki.gg/wiki/API_EditMacro).
 
 For the unresolved Forever report of food icons returning later, possibly after opening bags, read [food/water refresh notes](FOOD_WATER_REFRESH_NOTES.md) before diagnosing or claiming a fix. The original cause and live-client resolution remain unconfirmed.
 
