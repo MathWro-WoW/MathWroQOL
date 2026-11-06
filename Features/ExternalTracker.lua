@@ -1,20 +1,31 @@
 local _, addon = ...
 
+local RETAIL_EXTERNAL_SPELLS = {
+    { spellID = 33206, label = "Pain Suppression" },
+    { spellID = 47788, label = "Guardian Spirit" },
+    { spellID = 102342, label = "Ironbark" },
+    { spellID = 116849, label = "Life Cocoon" },
+    { spellID = 6940, label = "Blessing of Sacrifice" },
+    { spellID = 1022, label = "Blessing of Protection" },
+    { spellID = 204018, label = "Blessing of Spellwarding" },
+    { spellID = 1044, label = "Blessing of Freedom" },
+    { spellID = 357170, label = "Time Dilation" },
+    { spellID = 10060, label = "Power Infusion" },
+    { spellID = 29166, label = "Innervate" },
+}
+
+local FOREVER_EXTERNAL_SPELLS = {
+    { spellID = 1022, label = "Blessing of Protection", spellIDs = { [1022] = true, [5599] = true, [10278] = true } },
+    { spellID = 6940, label = "Blessing of Sacrifice", spellIDs = { [6940] = true, [20729] = true } },
+    { spellID = 1044, label = "Blessing of Freedom" },
+    { spellID = 10060, label = "Power Infusion" },
+    { spellID = 6346, label = "Fear Ward" },
+    { spellID = 29166, label = "Innervate" },
+}
+
 local ExternalTracker = {
     name = "externalTracker",
-    spells = {
-        { spellID = 33206, label = "Pain Suppression" },
-        { spellID = 47788, label = "Guardian Spirit" },
-        { spellID = 102342, label = "Ironbark" },
-        { spellID = 116849, label = "Life Cocoon" },
-        { spellID = 6940, label = "Blessing of Sacrifice" },
-        { spellID = 1022, label = "Blessing of Protection" },
-        { spellID = 204018, label = "Blessing of Spellwarding" },
-        { spellID = 1044, label = "Blessing of Freedom" },
-        { spellID = 357170, label = "Time Dilation" },
-        { spellID = 10060, label = "Power Infusion" },
-        { spellID = 29166, label = "Innervate" },
-    },
+    spells = addon.isForever and FOREVER_EXTERNAL_SPELLS or RETAIL_EXTERNAL_SPELLS,
 }
 addon.externalTracker = ExternalTracker
 
@@ -24,6 +35,15 @@ local function applyAppearance(display, db, enabled)
     if display.zoom ~= zoom then
         display.icon:SetTexCoord(zoom, 1 - zoom, zoom, 1 - zoom)
         display.zoom = zoom
+    end
+    if display.durationText then
+        local textSize = db.durationTextSize or 18
+        if display.durationTextSize ~= textSize then
+            display.durationText:SetFont(STANDARD_TEXT_FONT, textSize, "OUTLINE")
+            display.durationTextSize = textSize
+        end
+        -- The binding owns secret text/alpha/color, but not the Shown aspect.
+        display.durationText:SetShown(db.durationTextEnabled ~= false)
     end
     addon:ApplyIconGlow(display, display.glowHost, enabled and db.glowType or "none", db.iconSize, db.iconSize)
 end
@@ -113,6 +133,28 @@ local function registerTracker(Tracker, title, previewSpellID)
                     end,
                 },
                 {
+                    kind = editMode.SettingType.Checkbox, name = "Show duration text", default = true,
+                    get = function() return getDb().durationTextEnabled ~= false end,
+                    set = function(_, value)
+                        local current = getDb()
+                        if not current or not current.enabled or InCombatLockdown() then return end
+                        current.durationTextEnabled = value
+                        Tracker:Apply()
+                    end,
+                },
+                {
+                    kind = editMode.SettingType.Slider, name = "Duration text size", default = 18,
+                    minValue = 8, maxValue = 40, valueStep = 1,
+                    disabled = function() return getDb().durationTextEnabled == false end,
+                    get = function() return getDb().durationTextSize or 18 end,
+                    set = function(_, value)
+                        local current = getDb()
+                        if not current or not current.enabled or InCombatLockdown() then return end
+                        current.durationTextSize = math.max(8, math.min(40, math.floor(value + 0.5)))
+                        Tracker:Apply()
+                    end,
+                },
+                {
                     kind = editMode.SettingType.Slider, name = "Icon zoom", default = 8,
                     desc = "Crop a percentage from each edge of the icon. Applies to all tracked icons.",
                     minValue = 0, maxValue = 30, valueStep = 1,
@@ -192,6 +234,7 @@ local function registerTracker(Tracker, title, previewSpellID)
 
                 local text = cooldown:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
                 text:SetPoint("CENTER")
+                slot.durationText = text
                 auraButton:SetDurationText(text, {})
                 slot.glowHost = CreateFrame("Frame", nil, auraButton)
                 slot.glowHost:SetAllPoints(auraButton)
@@ -281,7 +324,11 @@ local function registerTracker(Tracker, title, previewSpellID)
                 })
             end
             if slot then applyAppearance(slot, db, wantsIcon) end
-            syncSound(spellID, settings)
+            if spell.spellIDs then
+                for soundSpellID in pairs(spell.spellIDs) do syncSound(soundSpellID, settings) end
+            else
+                syncSound(spellID, settings)
+            end
         end
 
         if container then
@@ -295,7 +342,10 @@ local function registerTracker(Tracker, title, previewSpellID)
                 local icon = preview:CreateTexture(nil, "ARTWORK")
                 icon:SetAllPoints()
                 icon:SetTexture(C_Spell.GetSpellInfo(previewSpellID).iconID)
-                previewAppearance = { icon = icon, glowHost = preview }
+                local text = preview:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+                text:SetPoint("CENTER")
+                text:SetText("12")
+                previewAppearance = { icon = icon, glowHost = preview, durationText = text }
             end
             preview:SetSize(db.iconSize, db.iconSize)
             applyAppearance(previewAppearance, db, true)

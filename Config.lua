@@ -2420,7 +2420,7 @@ local function BuildCombatTrackerPanel()
         sc,
         rootAnchor,
         "Combat Tracker",
-        "Track racials, trinkets, and consumables with fully configurable icon groups."
+        "Track racials, trinkets, and consumables with configurable icon groups. Enter Blizzard Edit Mode, then click a highlighted section to open its floating size and text settings; merged sections use the host's text controls."
     )
 
     local enableCB = MakeCheckbox(topContent, "Enable Combat Tracker", 0, 0,
@@ -2467,12 +2467,6 @@ local function BuildCombatTrackerPanel()
         { label = "Grid", value = "grid" },
     }
 
-    local STACK_FONT_OPTIONS = {
-        { label = "Friz Quadrata (Default)", value = "Fonts\\FRIZQT__.TTF" },
-        { label = "Arial Narrow", value = "Fonts\\ARIALN.TTF" },
-        { label = "Morpheus", value = "Fonts\\MORPHEUS.TTF" },
-        { label = "Skurri", value = "Fonts\\skurri.TTF" },
-    }
 
     local GROW_DIR_OPTIONS = {
         { label = "Grow Right", value = "growRight" },
@@ -2539,7 +2533,7 @@ local function BuildCombatTrackerPanel()
         end
 
         -- ── Merge & Layout ──
-        local mergeRow, layoutRow, gridRow, growDirRow, sizeSep
+        local mergeRow, layoutRow, gridRow, growDirRow, desatSep
 
         local function updateLayoutVisibility()
             local merged = (addon.db.combatTracker.frames[key].mergeInto or "none") ~= "none"
@@ -2552,9 +2546,9 @@ local function BuildCombatTrackerPanel()
                 gridRow:SetHeight(0.001)
                 growDirRow:Hide()
                 growDirRow:SetHeight(0.001)
-                sizeSep:ClearAllPoints()
-                sizeSep:SetPoint("RIGHT", gated, "RIGHT", 0, 0)
-                sizeSep:SetPoint("TOPLEFT", mergeRow, "BOTTOMLEFT", 0, -GROUP_SPACING)
+                desatSep:ClearAllPoints()
+                desatSep:SetPoint("RIGHT", gated, "RIGHT", 0, 0)
+                desatSep:SetPoint("TOPLEFT", mergeRow, "BOTTOMLEFT", 0, -GROUP_SPACING)
             else
                 layoutRow:SetHeight(24)
                 layoutRow:Show()
@@ -2576,9 +2570,9 @@ local function BuildCombatTrackerPanel()
                 growDirRow:SetPoint("RIGHT", gated, "RIGHT", 0, 0)
                 growDirRow:SetPoint("TOPLEFT", isGrid and gridRow or layoutRow, "BOTTOMLEFT", 0, -ROW_SPACING)
 
-                sizeSep:ClearAllPoints()
-                sizeSep:SetPoint("RIGHT", gated, "RIGHT", 0, 0)
-                sizeSep:SetPoint("TOPLEFT", growDirRow, "BOTTOMLEFT", 0, -GROUP_SPACING)
+                desatSep:ClearAllPoints()
+                desatSep:SetPoint("RIGHT", gated, "RIGHT", 0, 0)
+                desatSep:SetPoint("TOPLEFT", growDirRow, "BOTTOMLEFT", 0, -GROUP_SPACING)
             end
             C_Timer.After(0, function()
                 recalcGatedHeight()
@@ -2654,109 +2648,10 @@ local function BuildCombatTrackerPanel()
         end)
         growDirRow:SetPoint("TOPLEFT", gridRow, "BOTTOMLEFT", 0, -ROW_SPACING)
 
-        -- ── Icon Size ──
-        sizeSep = MakeSeparator(gated, growDirRow, -GROUP_SPACING)
+        -- ── Desaturate on Cooldown ──
+        desatSep = MakeSeparator(gated, growDirRow, -GROUP_SPACING)
 
         updateLayoutVisibility()
-
-        local widthSlider = MakeSliderWithInput(gated, "Icon Width (px)", 16, 80,
-            function() return addon.db.combatTracker.frames[key].iconWidth end,
-            function(val)
-                addon.db.combatTracker.frames[key].iconWidth = val
-                addon:NotifyFeature("combatTracker")
-            end
-        )
-        widthSlider:SetPoint("TOPLEFT", sizeSep, "BOTTOMLEFT", 0, -GROUP_SPACING)
-        table.insert(refreshFns, function() widthSlider:Refresh() end)
-
-        local heightSlider = MakeSliderWithInput(gated, "Icon Height (px)", 16, 80,
-            function() return addon.db.combatTracker.frames[key].iconHeight end,
-            function(val)
-                addon.db.combatTracker.frames[key].iconHeight = val
-                addon:NotifyFeature("combatTracker")
-            end
-        )
-        heightSlider:SetPoint("TOPLEFT", widthSlider, "BOTTOMLEFT", 0, -4)
-        table.insert(refreshFns, function() heightSlider:Refresh() end)
-
-        -- ── Stack Counter ──
-        local stackSep = MakeSeparator(gated, heightSlider, -GROUP_SPACING)
-
-        local stackEnabledCB = MakeCheckbox(gated, "Show stack counter on icons", 0, 0,
-            function() return addon.db.combatTracker.frames[key].stackCountEnabled ~= false end,
-            function(val)
-                addon.db.combatTracker.frames[key].stackCountEnabled = val
-                addon:NotifyFeature("combatTracker")
-            end
-        )
-        stackEnabledCB:ClearAllPoints()
-        stackEnabledCB:SetPoint("TOPLEFT", stackSep, "BOTTOMLEFT", 0, -GROUP_SPACING)
-
-        local stackFontSizeSlider = MakeSliderWithInput(gated, "Counter font size", 8, 24,
-            function() return addon.db.combatTracker.frames[key].stackCountFontSize end,
-            function(val)
-                addon.db.combatTracker.frames[key].stackCountFontSize = val
-                addon:NotifyFeature("combatTracker")
-            end
-        )
-        stackFontSizeSlider:SetPoint("TOPLEFT", stackEnabledCB, "BOTTOMLEFT", 16, -ROW_SPACING)
-        table.insert(refreshFns, function() stackFontSizeSlider:Refresh() end)
-
-        local stackFontRow = MakeOptionRow(gated, "Counter font:", function(row)
-            local btn = MakeDropdown(row, STACK_FONT_OPTIONS,
-                function()
-                    return addon.db.combatTracker.frames[key].stackCountFont or "Fonts\\FRIZQT__.TTF"
-                end,
-                function(val)
-                    addon.db.combatTracker.frames[key].stackCountFont = val
-                    addon:NotifyFeature("combatTracker")
-                end
-            )
-            table.insert(refreshFns, function() btn:Refresh() end)
-            return btn
-        end)
-        stackFontRow:SetPoint("TOPLEFT", stackFontSizeSlider, "BOTTOMLEFT", 0, -ROW_SPACING)
-
-        -- ── Cooldown Counter ──
-        local cdSep = MakeSeparator(gated, stackFontRow, -GROUP_SPACING)
-
-        local cdEnabledCB = MakeCheckbox(gated, "Show cooldown countdown text", 0, 0,
-            function() return addon.db.combatTracker.frames[key].cdCountEnabled ~= false end,
-            function(val)
-                addon.db.combatTracker.frames[key].cdCountEnabled = val
-                addon:NotifyFeature("combatTracker")
-            end
-        )
-        cdEnabledCB:ClearAllPoints()
-        cdEnabledCB:SetPoint("TOPLEFT", cdSep, "BOTTOMLEFT", 0, -GROUP_SPACING)
-
-        local cdFontSizeSlider = MakeSliderWithInput(gated, "Cooldown font size", 8, 24,
-            function() return addon.db.combatTracker.frames[key].cdCountFontSize end,
-            function(val)
-                addon.db.combatTracker.frames[key].cdCountFontSize = val
-                addon:NotifyFeature("combatTracker")
-            end
-        )
-        cdFontSizeSlider:SetPoint("TOPLEFT", cdEnabledCB, "BOTTOMLEFT", 16, -ROW_SPACING)
-        table.insert(refreshFns, function() cdFontSizeSlider:Refresh() end)
-
-        local cdFontRow = MakeOptionRow(gated, "Cooldown font:", function(row)
-            local btn = MakeDropdown(row, STACK_FONT_OPTIONS,
-                function()
-                    return addon.db.combatTracker.frames[key].cdCountFont or "Fonts\\FRIZQT__.TTF"
-                end,
-                function(val)
-                    addon.db.combatTracker.frames[key].cdCountFont = val
-                    addon:NotifyFeature("combatTracker")
-                end
-            )
-            table.insert(refreshFns, function() btn:Refresh() end)
-            return btn
-        end)
-        cdFontRow:SetPoint("TOPLEFT", cdFontSizeSlider, "BOTTOMLEFT", 0, -ROW_SPACING)
-
-        -- ── Desaturate on Cooldown ──
-        local desatSep = MakeSeparator(gated, cdFontRow, -GROUP_SPACING)
 
         local desatCB = MakeCheckbox(gated, "Desaturate icon on cooldown", 0, 0,
             function() return addon.db.combatTracker.frames[key].desaturateOnCD == true end,
@@ -2958,10 +2853,65 @@ local function BuildCombatTrackerPanel()
         hsCB:ClearAllPoints()
         hsCB:SetPoint("TOPLEFT", manaCB, "TOPLEFT", 200, 0)
 
+        local foodCB = MakeCheckbox(parent, "Food", 0, 0,
+            function() return addon.db.combatTracker.frames.consumables.showFood end,
+            function(val)
+                addon.db.combatTracker.frames.consumables.showFood = val
+                addon:NotifyFeature("combatTracker")
+            end
+        )
+        foodCB:ClearAllPoints()
+        foodCB:SetPoint("TOPLEFT", manaCB, "BOTTOMLEFT", 0, -4)
+
+        local waterCB = MakeCheckbox(parent, "Water", 0, 0,
+            function() return addon.db.combatTracker.frames.consumables.showWater end,
+            function(val)
+                addon.db.combatTracker.frames.consumables.showWater = val
+                addon:NotifyFeature("combatTracker")
+            end
+        )
+        waterCB:ClearAllPoints()
+        waterCB:SetPoint("TOPLEFT", foodCB, "TOPLEFT", 200, 0)
+
+        local preferenceLabel = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        preferenceLabel:SetPoint("TOPLEFT", foodCB, "BOTTOMLEFT", 4, -12)
+        preferenceLabel:SetText("Same-level food/water preference:")
+        local preference = MakeDropdown(parent, {
+            { label = "Highest item level", value = "itemLevel" },
+            { label = "Most in bags", value = "quantity" },
+        }, function() return addon.db.combatTracker.frames.consumables.foodWaterPreference or "itemLevel" end,
+            function(value) addon.db.combatTracker.frames.consumables.foodWaterPreference = value end)
+        preference:SetPoint("TOPLEFT", preferenceLabel, "BOTTOMLEFT", 0, -6)
+        preference:SetDropdownWidth(220)
+        table.insert(refreshFns, function() preference:Refresh() end)
+
+        local excludeBuffFoodCB = MakeCheckbox(parent, "Exclude food that grants buffs", 0, 0,
+            function() return addon.db.combatTracker.frames.consumables.excludeBuffFood == true end,
+            function(value)
+                addon.db.combatTracker.frames.consumables.excludeBuffFood = value
+                addon:NotifyFeature("combatTracker")
+            end)
+        excludeBuffFoodCB:ClearAllPoints()
+        excludeBuffFoodCB:SetPoint("TOPLEFT", preference, "BOTTOMLEFT", -4, -8)
+        excludeBuffFoodCB:HookScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Exclude food that grants buffs")
+            GameTooltip:AddLine("Only verified restoration-only food effects are eligible. Buff-granting and unrecognized food effects are excluded, including food used by the automatic water selection. Explicit Custom Items are unaffected.", 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        excludeBuffFoodCB:HookScript("OnLeave", function() GameTooltip:Hide() end)
+        table.insert(refreshFns, function() excludeBuffFoodCB:Refresh() end)
+
+        local foodSelectionGuide = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        foodSelectionGuide:SetPoint("TOPLEFT", excludeBuffFoodCB, "BOTTOMLEFT", 4, -6)
+        foodSelectionGuide:SetWidth(430)
+        foodSelectionGuide:SetJustifyH("LEFT")
+        foodSelectionGuide:SetText("Highest required level takes priority. Most in bags uses the combined count across all bag stacks.")
+
         -- ── Item Display Order (nested collapsible) ──
         local orderSection = MakeCollapsibleSection(parent, "Item Display Order", false)
         orderSection:ClearAllPoints()
-        orderSection:SetPoint("TOPLEFT", manaCB, "BOTTOMLEFT", -8, -GROUP_SPACING)
+        orderSection:SetPoint("TOPLEFT", foodSelectionGuide, "BOTTOMLEFT", -12, -GROUP_SPACING)
         orderSection:SetPoint("RIGHT", parent, "RIGHT", 0, 0)
 
         local orderContent = orderSection.content
@@ -3024,13 +2974,22 @@ local function BuildCombatTrackerPanel()
             if not consumablesSec then return nil, getItemRank(id) end
             local IDS = consumablesSec.CONSUMABLE_IDS
             for i, cid in ipairs(IDS.combatPotions or {}) do
-                if cid == id then return "Combat Potion", (i % 2 == 1) and 1 or 2 end
+                if cid == id then
+                    if addon.isForever then return "Combat Potion", getItemRank(id) end
+                    return "Combat Potion", (i % 2 == 1) and 1 or 2
+                end
             end
             for i, cid in ipairs(IDS.healingPotions or {}) do
-                if cid == id then return "Healing Potion", (i % 2 == 1) and 1 or 2 end
+                if cid == id then
+                    if addon.isForever then return "Healing Potion", getItemRank(id) end
+                    return "Healing Potion", (i % 2 == 1) and 1 or 2
+                end
             end
             for i, cid in ipairs(IDS.manaPotions or {}) do
-                if cid == id then return "Mana Potion", (i % 2 == 1) and 1 or 2 end
+                if cid == id then
+                    if addon.isForever then return "Mana Potion", getItemRank(id) end
+                    return "Mana Potion", (i % 2 == 1) and 1 or 2
+                end
             end
             for _, cid in ipairs(IDS.healthstone or {}) do
                 if cid == id then return "Healthstone", nil end
@@ -3321,6 +3280,8 @@ local function BuildCombatTrackerPanel()
         healCB:HookScript("OnClick", onCategoryToggle)
         manaCB:HookScript("OnClick", onCategoryToggle)
         hsCB:HookScript("OnClick", onCategoryToggle)
+        foodCB:HookScript("OnClick", onCategoryToggle)
+        waterCB:HookScript("OnClick", onCategoryToggle)
 
         local infoFrame = CreateFrame("Frame")
         infoFrame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
@@ -3547,7 +3508,7 @@ local function BuildExternalTrackerPanel()
     spellCard:SetBottomWidget(mediaNote, 12)
 
     local layoutCard, layoutContent = MakeCard(sc, spellCard, "Icon appearance",
-        "Open Blizzard Edit Mode and select External Tracker to change icon size, zoom, and glow. A Power Infusion example previews these settings while you move the row, even with no spells enabled.")
+        "Open Blizzard Edit Mode and select External Tracker to change icon size, duration-text visibility and size, zoom, and glow. A Power Infusion example previews these settings while you move the row, even with no spells enabled.")
     local reset = CreateFrame("Button", nil, layoutContent, "UIPanelButtonTemplate")
     reset:SetPoint("TOPLEFT", layoutContent, "TOPLEFT", 12, -2)
     reset:SetSize(140, 22)
@@ -3562,7 +3523,7 @@ local function BuildExternalTrackerPanel()
     layoutCard:SetBottomWidget(reset, 12)
 
     local bloodlustCard, bloodlustContent = MakeCard(sc, layoutCard, "Bloodlust Tracker",
-        "Show active Bloodlust, Heroism, Time Warp, Primal Rage, Fury of the Aspects, and drums with their remaining duration in a separate icon. Works with External Tracker disabled. Use Edit Mode for its own position, size, zoom, and glow.")
+        "Show active Bloodlust, Heroism, Time Warp, Primal Rage, Fury of the Aspects, and drums with their remaining duration in a separate icon. Works with External Tracker disabled. Use Edit Mode for its own position, icon size, duration text, zoom, and glow.")
     local bloodlustMaster = MakeCheckbox(bloodlustContent, "Enable Bloodlust Tracker", 12, -2,
         function() return addon.db.bloodlustTracker.enabled end,
         function(value)

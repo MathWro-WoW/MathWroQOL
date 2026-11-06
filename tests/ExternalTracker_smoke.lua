@@ -8,7 +8,7 @@ function sharedMedia:Fetch(_, key) return media[key] end
 function sharedMedia:RegisterCallback() end
 function sharedMedia:UnregisterCallback() end
 local editMode = { callbacks = {}, settings = {}, settingsByFrame = {}, moves = {}, frameSelections = {}, editing = false,
-    SettingType = { Slider = 1, Dropdown = 2 } }
+    SettingType = { Slider = 1, Dropdown = 2, Checkbox = 3 } }
 function editMode:RegisterCallback(event, callback)
     self.callbacks[event] = self.callbacks[event] or {}
     table.insert(self.callbacks[event], callback)
@@ -72,6 +72,10 @@ function methods:SetSize(width, height)
 end
 function methods:SetTexCoord(...) self.texCoords = { ... } end
 function methods:SetTexture(texture) self.texture = texture end
+function methods:SetFont(path, size, flags)
+    self.fontPath, self.fontSize, self.fontFlags = path, size, flags
+end
+function methods:SetText(text) self.text = text end
 function methods:SetAtlas(atlas) self.atlas = atlas end
 function methods:SetBlendMode() end
 function methods:IsShown()
@@ -110,7 +114,12 @@ function methods:CreateTexture()
     self.textures[#self.textures + 1] = texture
     return texture
 end
-function methods:CreateFontString() return setmetatable({}, { __index = methods }) end
+function methods:CreateFontString()
+    local text = setmetatable({ parent = self }, { __index = methods })
+    self.fontStrings = self.fontStrings or {}
+    self.fontStrings[#self.fontStrings + 1] = text
+    return text
+end
 function methods:SetIcon(texture) self.icon = texture end
 function methods:SetDurationCooldown(cooldown) self.cooldown = cooldown end
 function methods:SetDurationText(text) self.durationText = text end
@@ -258,6 +267,16 @@ local size = assert(editMode.settings["Icon size"], "icon size control must live
 local zoom = assert(editMode.settings["Icon zoom"], "icon zoom control must live in Edit Mode")
 local glow = assert(editMode.settings["Glow type"], "glow choices must live in Edit Mode")
 size.set("Test layout", 64, false)
+local textSize = assert(editMode.settings["Duration text size"])
+local showText = assert(editMode.settings["Show duration text"])
+textSize.set("Test layout", 26, false)
+assert(example.fontStrings[1].fontSize == 26 and example.fontStrings[1]:IsShown(),
+    "Edit Mode text size must update the visible preview")
+showText.set("Test layout", false, false)
+assert(not example.fontStrings[1]:IsShown() and db.durationTextEnabled == false,
+    "Edit Mode must hide preview duration text and save that preference")
+showText.set("Test layout", true, false)
+assert(example.fontStrings[1]:IsShown(), "duration text must return without recreating the preview")
 zoom.set("Test layout", 15, false)
 assert(example.width == 64 and example.textures[1].texCoords[1] == 0.15, "preview must immediately reflect visual controls")
 glow.set("Test layout", "proc", false)
@@ -275,6 +294,10 @@ editMode.move(nil, nil, "TOPLEFT", 100, -200)
 assert(db.point == "TOPLEFT" and db.x == 100 and db.y == -200, "moving the preview must save its position")
 inCombat = true
 fire("PLAYER_REGEN_DISABLED")
+textSize.set("Test layout", 32, false)
+showText.set("Test layout", false, false)
+assert(db.durationTextSize == 26 and db.durationTextEnabled,
+    "combat must not change saved duration text settings")
 assert(not example:IsShown(), "combat must dismiss the preview even before Edit Mode exits")
 inCombat = false
 toggleEditMode(false)
@@ -288,6 +311,8 @@ for _, auraContainer in ipairs(containers) do
     end
 end
 assert(auraButton.icon.texCoords[1] == 0.15, "live icons must inherit the configured zoom")
+assert(auraButton.durationText.fontSize == 26 and auraButton.durationText:IsShown(),
+    "saved text appearance must apply to real icons without reaccessing the restricted aura button")
 local glowFrame
 for _, frame in ipairs(frames) do
     if frame.parent == auraButton and frame.textures and frame.textures[1].animation then glowFrame = frame end
@@ -302,6 +327,11 @@ for _, style in ipairs({ "proc", "assist", "classic" }) do
 end
 size.set("Test layout", 48, false)
 zoom.set("Test layout", 0, false)
+textSize.set("Test layout", 22, false)
+showText.set("Test layout", false, false)
+assert(auraButton.durationText.fontSize == 22 and not auraButton.durationText.shown,
+    "Edit Mode text edits must update previously created real icons")
+showText.set("Test layout", true, false)
 assert(#frames == frameCount and registrations == registeredSounds, "appearance edits must reuse frames and retain sound registrations")
 toggleEditMode(false)
 assert(hasIcon(33206) and glowFrame:IsShown(), "leaving Edit Mode must restore the live icon")
@@ -352,6 +382,11 @@ local previousSize, previousZoom, previousX = db.iconSize, db.iconZoom, db.x
 lustSettings["Icon size"].set("Test layout", 60, false)
 lustSettings["Icon zoom"].set("Test layout", 12, false)
 lustSettings["Glow type"].set("Test layout", "proc", false)
+lustSettings["Duration text size"].set("Test layout", 30, false)
+lustSettings["Show duration text"].set("Test layout", false, false)
+assert(lustPreview.fontStrings[1].fontSize == 30 and not lustPreview.fontStrings[1]:IsShown()
+    and db.durationTextSize == 22 and db.durationTextEnabled,
+    "Bloodlust text settings must update its preview without changing external text")
 editMode.moves[lustAnchor](nil, nil, "CENTER", 180, -120)
 assert(lustPreview.width == 60 and lustPreview.textures[1].texCoords[1] == 0.12
     and lustPreview.textures[2].animation:IsPlaying(), "bloodlust appearance controls must update its own preview")

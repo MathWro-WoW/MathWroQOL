@@ -3,6 +3,8 @@
 Canonical reference for architecture, code style, and WoW API patterns.
 `AGENTS.md` is the repository instruction entry point and defers to this document.
 
+When adding or moving controls into the floating Edit Mode window, read [Edit Mode settings](EDIT_MODE_SETTINGS.md) for the registration recipe, ownership/reset pitfalls, and verification.
+
 ---
 
 ## Interface Version & TOC
@@ -203,11 +205,36 @@ addon.combatTracker = CT  -- in CombatTracker.lua top-level
 addon.editModeNudge = EditModeNudge  -- in EditModeNudge.lua top-level
 ```
 
+### Combat Tracker's floating Edit Mode settings
+
+`CT:CreateSectionFrame` registers both the movable anchor and appearance settings with LibEditMode. Clicking a native highlighted selection opens LibEditMode's floating dialog, using its actual pooled slider/checkbox/dropdown widgets. `Config.lua` retains section enablement, layout/merge/growth, desaturation, exclusions, and item controls, but does not duplicate icon-size or count/cooldown-text appearance controls.
+
+Existing `frames.<section>` appearance keys are reused without migration: `iconWidth`/`iconHeight` (16–80), `stackCountEnabled`/`stackCountFontSize` (8–24)/`stackCountFont`, and `cdCountEnabled`/`cdCountFontSize` (8–24)/`cdCountFont`. Setters return in combat or while their tracker/section is disabled. Size setters only relayout; font setters apply to existing buttons without rescanning gameplay state. Empty anchors keep the configured footprint so they can still be selected.
+
+Merged groups expose a **Text section** dropdown in the host's dialog. Icon dimensions belong to the host; text controls target the selected contributor's own saved keys. The selector is transient UI state and ignores Reset Settings' default invocation so resetting a selected contributor cannot silently switch to the host's text settings. Refresh through public `LibEditMode:RefreshFrameSettings`, not library internals. Refresh the section registrations when merge settings change. Native Edit Mode exit owns selection/dialog cleanup.
+
+
+### Client catalogs and bag-selected food/water
+
+Racials select a separate Forever active-spell catalog via `addon.isForever`, including distinct Human, Night Elf, Troll, and Skyborne IDs. Known-spell filtering and per-name visibility settings remain shared.
+
+Consumables likewise select client-specific potion/Healthstone item families; ordinary potion and custom-item cooldown spells come from `C_Item.GetItemSpell`, not Retail spell constants. Healthstone shared-cooldown mappings are per item. Config reads the selected `CONSUMABLE_IDS` for its order list and does not assign Midnight rank badges to Forever entries.
+
+`frames.consumables.showFood` and `showWater` default false. The existing bag scan combines character-bag stacks, then identifies food/drink by consumable subclass and effect spell IDs/localized canonical spell-name identity (never English tooltip parsing). Forever's Nutritious Food effects are eligible food, including their localized name family. Explicit hybrid effects are handled separately; the hybrid `65422` is named Food and must not be used as a hybrid name reference, because ordinary health-only food has that same localized name. Eligibility uses `C_PlayerInfo.CanUseItem` and the required level, not `C_Item.IsUsableItem`: temporary action usability must not hide inventory food/water at full health/mana or during combat. `foodWaterPreference` defaults `"itemLevel"`: required level, item level, then lowest item ID. `"quantity"` instead compares summed bag count after required level, with item level and item ID as subsequent tie-breakers. At most one food and one water selection are appended after configured items, with duplicate IDs suppressed, including hybrids/custom overlap. Selected counts include one and respect the stack-count toggle. Missing food/water never creates fallback icons.
+
+`excludeBuffFood` defaults false. With it enabled, food candidates must match verified restoration-only effect IDs (`FOOD_SPELL_IDS` or explicit hybrid IDs); a localized name match alone cannot prove absence of an additional buff. Unknown effects and known Nutritious Food are skipped. Filter before either dynamic selection so excluded hybrids cannot enter as water. This restriction applies only to automatic selections, not explicitly configured custom items. There is no aura/tooltip scan or inference from the player's currently active buffs.
+
+`BAG_UPDATE`, `PLAYER_LEVEL_UP`, and requested `ITEM_DATA_LOAD_RESULT` completions coalesce into next-frame scans; deferring level-up allows `UnitLevel` to settle. Uncached item data is requested once while pending. Disabled sections do not scan. Food/water uses the existing button pool, fonts, Masque group, merge/layout path, and engine-owned cooldown display.
+
+For the unresolved Forever report of food icons returning later, possibly after opening bags, read [food/water refresh notes](FOOD_WATER_REFRESH_NOTES.md) before diagnosing or claiming a fix. The original cause and live-client resolution remain unconfirmed.
+
 ---
 
 ## External Tracker
 
 `ExternalTracker.lua` exports `addon.externalTracker.spells` as the catalog consumed by Config.lua. The master switch defaults off; an absent numeric entry in `externalTracker.spells[spellID]` is disabled. Each configured entry stores `enabled`, `mode` (`icon`, `sound`, `both`), and a LibSharedMedia `sound` key.
+
+The external catalog is selected with `addon.isForever`. Forever groups Protection (`1022`, `5599`, `10278`) and Sacrifice (`6940`, `20729`) into one setting/secure slot per family, and also offers Freedom, Power Infusion, Fear Ward, and Innervate. `spellID` remains the saved-setting key; optional `spellIDs` is the aura candidate map. Sound registrations are per actual aura ID, so disabling a family removes every rank's registration. Midnight's catalog and saved settings are unchanged; unsupported saved entries cannot activate Forever slots or sounds.
 
 The same file registers `bloodlustTracker` through the private `registerTracker` function. Each registration owns its events, aura container, anchor, preview, sounds, and Edit Mode callbacks. Bloodlust defaults off with separate position/appearance settings; it has no per-spell settings or sound mode. One `HELPFUL` slot accepts the grouped `spellIDs` map, covering class buffs (including Primal Rage's alternate aura), legacy hunter variants, and drums through Void-touched Drums. Use buff IDs, not cast IDs or Exhaustion/Sated debuffs. Blizzard supplies the actual matching buff's icon and duration.
 
@@ -215,8 +242,8 @@ The same file registers `bloodlustTracker` through the private `registerTracker`
 - Sounds use `C_UnitAuras.AddAuraSound(Enum.UnitAuraSoundTrigger.Added, info)` with the selected media's file path or file ID. The tracker-wide `externalTracker.soundChannel` defaults to `"Master"`; Config offers Master, SFX, Music, Ambience, and Dialog and uses the same channel for previews. Keep registrations whose sound and channel are unchanged; replace them when either changes, and remove obsolete registrations on mode changes, spell disable, or master disable. No LibSharedMedia library or missing media means no sound, not a substitute.
 - Native sounds cannot filter by caster, so both outputs include self-cast instances of the listed buffs. This is an incoming buff-duration tracker, not a tracker of other players' cooldown availability.
 - Config controls are combat-gated; enabled runtime changes requested during combat are deferred to `PLAYER_REGEN_ENABLED`. Disabled runtime unregisters its events and media callback, removes sounds, stops glows, and disables/hides its containers. The ordinary Edit Mode anchor is created on enable; Blizzard_AuraContainer and aura slots still load only when an icon spell is enabled.
-- LibEditMode's frame settings own each tracker's `iconSize`, `iconZoom` (percentage cropped per edge), and `glowType` controls. Its `enter`/`exit` callbacks show/hide an ordinary preview (Power Infusion for externals; Bloodlust for bloodlust), independent of spell enablement and sound registrations. Real icons are hidden during editing, then restored; preview frames and glow textures are reused.
-- Glow styles use native looping FlipBook animations (Classic, Modern Proc, Assisted Combat), not Lua animation drivers. Their owned child frames inherit engine-managed aura visibility. Appearance updates use retained references to addon-owned textures/frames only; they never re-access the restricted AuraButton.
+- LibEditMode's frame settings own each tracker's `iconSize`, `durationTextEnabled`, `durationTextSize`, `iconZoom` (percentage cropped per edge), and `glowType` controls. Duration text defaults visible at 18px, with an 8–40px size range. Text size is disabled in the panel when text is hidden. Both setters are combat- and enable-gated, save directly to the owning tracker's DB, and update existing icons. Its `enter`/`exit` callbacks show/hide an ordinary preview (Power Infusion for externals; Bloodlust for bloodlust), independent of spell enablement and sound registrations. The preview includes static sample duration text; it never simulates an aura or sound. Real icons are hidden during editing, then restored; preview frames and glow textures are reused.
+- Glow styles use native looping FlipBook animations (Classic, Modern Proc, Assisted Combat), not Lua animation drivers. Their owned child frames inherit engine-managed aura visibility. Appearance updates use retained references to addon-owned textures, font strings, and frames only; they never re-access the restricted AuraButton. Duration text's native binding owns secret Text/Alpha/VertexColor aspects, so appearance only changes its font and non-secret Shown aspect; never read or overwrite the live duration text, alpha, or color.
 
 ---
 
@@ -241,7 +268,7 @@ Settings panels registered via `Settings.RegisterCanvasLayoutCategory` / `Settin
 - **Parent** — "MathWro QOL" (container, no interactive controls)
   - **General** — GameMenu scaling / drag / reset position; CDM Button and slash toggles; Auction House filters; opt-in Folio Equipment Sets toggle and native Folio UI guidance
   - **CVars and Settings** — optional CVar enforcement such as maximum camera distance
-  - **Combat Tracker** — master enable; per-section collapsible blocks (Racials, Trinkets, Consumables)
+  - **Combat Tracker** — master enable; per-section collapsible blocks (Racials, Trinkets, Consumables) for layout/merge and gameplay filters; icon and text appearance live only in the selected section's floating Edit Mode window
   - **External Tracker** — external master enable; selected-spell enable, icon/sound/both mode and SharedMedia sound preview; independent Bloodlust Tracker toggle; separate position resets and guidance for each tracker's Edit Mode appearance controls
   - **ElvUI** — ElvUI Vehicle Bar visibility and Buff Health Color controls; all controls disabled when ElvUI is absent
   - **EllesmereUI** — EllesmereUI Action Bars visibility, native Raid Frames Buff Manager guidance, and the optional Unlock Mode Nudge toggle; controls disabled when the required module is absent

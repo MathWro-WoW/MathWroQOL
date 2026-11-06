@@ -6,7 +6,7 @@ local CT = addon.combatTracker
 -- Each entry: { spellID, name } where name is used for the per-name toggle.
 -- Multiple entries per race handle class variants (e.g. Blood Fury has 3 spell IDs).
 -- Only the first matching C_SpellBook.IsSpellKnown() entry per name is used.
-local RACIAL_DATA = {
+local RETAIL_RACIAL_DATA = {
     ["Human"]              = { { spellID=59752,  name="Every Man for Himself" } },
     ["Dwarf"]              = { { spellID=20594,  name="Stoneform" } },
     ["NightElf"]           = { { spellID=58984,  name="Shadowmeld" } },
@@ -52,6 +52,54 @@ local RACIAL_DATA = {
     },
     ["Earthen"]            = { { spellID=461597, name="Stone Form" } },
 }
+
+local FOREVER_RACIAL_DATA = {
+    ["Human"] = {
+        { spellID=1259718, name="Will to Survive" },
+        { spellID=20600,   name="Perception" },
+    },
+    ["Dwarf"] = {
+        { spellID=20594, name="Stoneform" },
+        { spellID=2481,  name="Find Treasure" },
+    },
+    ["NightElf"] = {
+        { spellID=20580,   name="Shadowmeld" },
+        { spellID=1259799, name="Elune's Light" },
+    },
+    ["Gnome"] = {
+        { spellID=20589,   name="Escape Artist" },
+        { spellID=1259812, name="Eureka!" },
+        { spellID=1259813, name="Eureka!" },
+        { spellID=1259817, name="Eureka!" },
+        { spellID=1259821, name="Eureka!" },
+        { spellID=1259823, name="Eureka!" },
+    },
+    ["Orc"] = {
+        { spellID=20572,   name="Blood Fury" },
+        { spellID=33697,   name="Blood Fury" },
+        { spellID=33702,   name="Blood Fury" },
+        { spellID=1299026, name="Shatter Curse" },
+    },
+    ["Scourge"] = {
+        { spellID=7744,  name="Will of the Forsaken" },
+        { spellID=20577, name="Cannibalize" },
+    },
+    ["Tauren"] = {
+        { spellID=20549,   name="War Stomp" },
+        { spellID=1312643, name="Cultivation" },
+    },
+    ["Troll"] = {
+        { spellID=20554,   name="Berserking" },
+        { spellID=1260270, name="Rapid Regeneration" },
+    },
+    ["Skyborne"] = {
+        { spellID=1259705, name="Read Ley Line" },
+        { spellID=1259686, name="Skysight" },
+        { spellID=1259416, name="Walk on Air" },
+    },
+}
+
+local RACIAL_DATA = addon.isForever and FOREVER_RACIAL_DATA or RETAIL_RACIAL_DATA
 
 -- ── Section definition ────────────────────────────────────────────────────────
 

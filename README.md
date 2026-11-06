@@ -17,9 +17,9 @@ Forever uses the modern Mainline UI/API family, including Midnight's secret-valu
 | Camera distance and Spell Queue Window | Shared | Opt-in enforcement through `C_CVar`; no changes while disabled. |
 | Edit Mode Nudge | Shared | Native Edit Mode and bundled LibEditMode; Ellesmere Unlock Mode also requires its compatible provider module. |
 | Combat Tracker: trinkets | Shared | Discovers equipped on-use items dynamically. |
-| Combat Tracker: racials | Data-limited | Tracks known IDs in the existing catalog. Forever-specific racial IDs, including Skyborne abilities, are not cataloged. |
-| Combat Tracker: consumables | Data-limited | Built-in potion catalog is Midnight-specific. Add Forever item IDs under **Custom Items**; custom items use their own item-use spell. Healthstone coverage is limited to cataloged item IDs. |
-| External and Bloodlust trackers | Data-limited | Secure aura icons/sounds use shared APIs, but only cataloged buff IDs can match. Retail-only buffs and different Forever spell ranks/IDs do not gain automatic equivalents. |
+| Combat Tracker: racials | Client-specific | Forever uses its own active-racial catalog, including Human, Night Elf, Troll, Gnome, and Skyborne abilities; only spells the character knows are shown. |
+| Combat Tracker: consumables | Client-specific | Forever has its own potion and Healthstone item families; item-use spell IDs come from the client. Midnight retains its own potion/fleeting catalog. Optional food and water icons select usable items from character bags on either client. |
+| External and Bloodlust trackers | Client/data-dependent | Forever's externals use Protection and Sacrifice rank families, Freedom, Power Infusion, Fear Ward, and Innervate. Midnight retains its own external catalog. Bloodlust still matches the existing cataloged buff IDs; no Forever-specific replacement is assumed. |
 | Vehicle Bar visibility | Provider-dependent | Requires compatible ElvUI or EllesmereUI Action Bars and a relevant vehicle/override state. |
 | Buff Health Color | Provider/data-dependent | Requires compatible ElvUI and matching spell IDs. Built-ins use Retail healer data; custom profiles can use Forever spell IDs. Retail specialization filters are unavailable when the client's deprecated specialization globals are absent; use all-spec custom profiles. Ellesmere Raid Frames provides its own indicators. |
 | CMC Masque skinning | Provider-dependent | Requires compatible CooldownManagerCentered and Masque plus populated Blizzard viewers. |
@@ -32,9 +32,12 @@ Provider integrations remain inactive when their provider is unavailable. Their 
 
 **Launch validation:** load Forever, open `/mqol`, confirm Folio Equipment Sets is absent from General and Heroic Strike is absent from CDM Plugins, then exercise shared features with that character's actual items/spells and optional providers. Confirm both cards remain available on Midnight. Test cooldowns and aura icons in combat, menu positioning, Edit Mode dragging, `/reload`, and a full logout/relaunch for saved settings. Check `!BugGrabber`/BugSack for errors. Early beta builds had community-reported SavedVariables loading failures; persistence on the launch client still needs an in-game check. No macro/CVar persistence workaround is included.
 
-**Developer checks:** run `lua tests/ClientFeatures_smoke.lua` and `lua tests/CombatTracker_MainlineNamespaces_smoke.lua` alongside the existing feature smoke suite, then `luac -p Core.lua Config.lua Features/*.lua tests/*.lua`. These harnesses cover client gating, namespaced tracker calls, and existing feature behavior, not Blizzard's live UI or third-party provider compatibility.
+**Developer checks:** run `lua tests/ClientFeatures_smoke.lua`, `lua tests/ForeverCatalogs_smoke.lua`, `lua tests/CombatTracker_MainlineNamespaces_smoke.lua`, `lua tests/CombatTracker_Consumables_food_water_smoke.lua`, and `lua tests/CombatTracker_EditMode_smoke.lua` alongside the existing feature smoke suite, then `luac -p Core.lua Config.lua Features/*.lua tests/*.lua`. These harnesses cover client gating, ranked external buffs, client-specific racial/consumable selection, food/water selection and counts, and native Edit Mode selection/dialog/widget interactions—not Blizzard's live UI rendering or third-party provider compatibility.
 
 Sources: [Blizzard Forever UI source, build 70707](https://github.com/Gethe/wow-ui-source/tree/aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16), [Forever API notes and TOC aliases](https://warcraft.wiki.gg/wiki/Patch_1.60.1/API_changes/notes), [BigWigs multi-client packaging](https://github.com/BigWigsMods/packager#building-for-multiple-game-versions), [early beta API/persistence measurements](https://github.com/Thunderz96/forever-addon-kit).
+
+Tracker catalog references: the installed Forever EllesmereUI `EllesmereUI_BuffPresets.lua` and CDM racial catalog, [Forever Alchemy](https://questing.wiki/wow-forever/professions/alchemy/), [Forever First Aid](https://questing.wiki/wow-forever/professions/first-aid/), and [Midnight Food & Drink](https://www.wowhead.com/spell=1291857/food-drink). Catalog data is client-specific; additional consumables can still be added by item ID.
+Forever food examples: [Spiced Wolf Meat](https://questing.wiki/wow-forever/items/2680/) and [Nightfin Soup](https://questing.wiki/wow-forever/items/13931/) use Nutritious Food effects; [Tough Jerky](https://questing.wiki/wow-forever/items/117/) uses a plain restoration effect.
 
 ## Features
 
@@ -83,27 +86,40 @@ Displays icon bars for racial abilities, equipped trinkets, and consumable items
 
 On-use trinkets use their equipped item's full cooldown, including in combat, rather than the potentially shorter use-spell cooldown. Disabled or finished cooldowns clear the countdown and restore icon color. This path is verified against the WoW 12.1.5 APIs.
 
+**Food & Water** *(disabled by default)*
+
+In `/mqol` → **Combat Tracker** → **Consumables**, enable **Food** and/or **Water**. Highest required level always takes priority. **Same-level food/water preference** chooses the next rule:
+
+- **Highest item level** (default): keep the previous selection rule.
+- **Most in bags**: choose the item with the greatest total count across every bag stack. Equal counts fall back to item level; remaining ties use the lowest item ID.
+
+**Exclude food that grants buffs** defaults off. When enabled, automatic selection accepts only verified restoration-only food effects; buff-granting and unrecognized effects are skipped. This is deliberately conservative because the item API has no food-buff flag. A rejected food/water hybrid cannot bypass the filter through the water selection. Explicitly configured **Custom Items** are unaffected. The checkbox tooltip explains this policy.
+
+Counts combine every bag stack of the selected item and show even when only one remains; the existing stack-count toggle and font settings apply. A selected item that restores both health and mana appears once. These icons follow the normal consumable order and disappear when no eligible item remains, regardless of “Hide icon if not in inventory.” Bag changes, level-ups, and item-data completion refresh the selection. Bank contents are excluded; these are display icons, not click-to-use buttons.
+
+Food/water eligibility uses character requirements, not whether you can consume the item at that instant. Full health/mana and temporary eating/drinking restrictions do not remove eligible bag items from the tracker. Plain foods such as Darnassian Bleu (`2070`) and Healing Herb (`961`) remain eligible with buff-food exclusion enabled.
+
 **Layout & Positioning**
-Each section can be positioned independently via Edit Mode (LibEditMode integration) or merged into another section's bar. Layout options include horizontal row, vertical column, and grid with configurable icons-per-row. Anchor direction controls growth direction.
+Each section can be positioned independently via Blizzard Edit Mode (LibEditMode integration) or merged into another section's bar. With Combat Tracker and the section enabled, enter Edit Mode and **click** the highlighted **MathWroQOL - CT Racials**, **CT Trinkets**, or **CT Consumables** selection to open a floating settings window beside the game UI. Dragging moves the group; clicking opens its settings. Layout, merge target, grid columns, and growth direction remain under `/mqol` → **Combat Tracker**.
 
 **Customisation**
-Per-section icon width and height sliders. Stack counter and cooldown countdown text with independent font and size controls. Custom item tracking by item ID. Reorderable item display with drag-style up/down arrows showing Midnight-style rank quality icons. Optional Masque skinning integration.
+The floating Edit Mode window owns **Icon width**, **Icon height**, and stack/cooldown text visibility, font, and font-size controls. Existing saved appearance settings are preserved. For merged groups, select the visible host and use **Text section** to choose whose text you are editing; icon dimensions apply to the host's whole group. Controls cannot change settings in combat or while the tracker/section is disabled. Custom items, display order, exclusions, desaturation, and optional Masque integration remain in `/mqol`; appearance controls are not duplicated there.
 
 ### External Tracker *(disabled by default)*
 
-Track buffs applied to you: Pain Suppression, Guardian Spirit, Ironbark, Life Cocoon, Blessing of Sacrifice, Blessing of Protection, Blessing of Spellwarding, Blessing of Freedom, Time Dilation, Power Infusion, and Innervate.
+Track buffs applied to you. Midnight offers Pain Suppression, Guardian Spirit, Ironbark, Life Cocoon, Blessing of Sacrifice, Blessing of Protection, Blessing of Spellwarding, Blessing of Freedom, Time Dilation, Power Infusion, and Innervate. Forever offers Blessing of Protection, Blessing of Sacrifice, Blessing of Freedom, Power Infusion, Fear Ward, and Innervate; one setting covers all supported ranks of Protection or Sacrifice for both icons and sound alerts.
 
 Open **External Tracker** in `/mqol`, enable the module, then select and enable individual spells. Each spell independently supports **Icon with duration**, **Sound only**, or **Icon and sound**. Sound choices come from LibSharedMedia provided by your enabled addons, with a Preview Sound button. The dropdown scrolls through long lists and picks up newly registered sounds whenever it opens. Select a sound explicitly; **None** is silent. Missing libraries or sound packs do not affect icons and never substitute another sound.
 
 Blizzard's secure Aura Slots manage icon visibility and remaining duration; native aura sound registrations play on buff application. The tracker-wide **Sound Channel** dropdown selects **Master** (default), **Sound Effects**, **Music**, **Ambience**, or **Dialog** for both alerts and Preview Sound. Playback follows the selected channel's volume and mute settings. Selected buffs include self-casts because the sound API cannot filter by caster. Settings are locked during combat.
 
-**Edit Mode appearance:** select External Tracker in Blizzard Edit Mode to move the row and adjust **Icon size** (20–80px), **Icon zoom** (0–30% cropped from each edge), and **Glow type** (None, Classic, Modern Proc, or Assisted Combat). These settings apply to all tracked icons. A Power Infusion example previews changes even when no spells are enabled; it disappears on exit and never triggers a sound. Glow defaults to None; the default 8% zoom preserves the previous icon crop. Reset Position remains in the submenu.
+**Edit Mode appearance:** enable the tracker, open Blizzard Edit Mode, then select **External Tracker** to open its settings panel. Adjust **Icon size** (20–80px), **Show duration text**, **Duration text size** (8–40px), **Icon zoom** (0–30% cropped per edge), and **Glow type** (None, Classic, Modern Proc, or Assisted Combat). These settings apply to all tracked icons. A Power Infusion example with sample duration text previews changes even when no spells are enabled; it disappears on exit and never triggers a sound. Text defaults to visible at 18px; glow defaults to None. Size and visibility changes apply to existing icons without changing Blizzard's duration binding. Settings cannot be changed in combat. Enable/spell/sound options and Reset Position remain in `/mqol`.
 
 ### Bloodlust Tracker *(disabled by default)*
 
 In `/mqol` → **External Tracker**, enable **Bloodlust Tracker** for a separate duration icon. It works whether the external tracker is enabled or disabled. Bloodlust, Heroism, Time Warp, Fury of the Aspects, Primal Rage (including its alternate aura), legacy hunter equivalents, and drums through Void-touched Drums are recognized automatically. The icon shows the active buff and its remaining duration, not the Exhaustion/Sated lockout.
 
-Select **Bloodlust Tracker** in Blizzard Edit Mode to move its Bloodlust preview and adjust its own size, zoom, and glow. Position and appearance are independent of the external tracker; its Reset Position button is in the same submenu. Bloodlust tracking is icon-only and does not change external spell sounds.
+Select **Bloodlust Tracker** in Blizzard Edit Mode to open its own settings panel for icon size, duration-text visibility and size, zoom, and glow. Position and appearance are independent of the external tracker; its Reset Position button is in the same submenu. Its preview includes sample duration text. Bloodlust tracking is icon-only and does not change external spell sounds.
 
 ### Edit Mode
 

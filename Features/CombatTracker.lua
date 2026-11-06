@@ -243,7 +243,7 @@ function CT:LayoutSection(key)
         newW = totalCols * w + (totalCols - 1) * padding
         newH = totalRows * h + (totalRows - 1) * padding
     else
-        newW, newH = 36, 36
+        newW, newH = w, h
     end
 
     -- Resize and re-anchor at the stable edge so icons don't drift when count changes
@@ -254,6 +254,170 @@ function CT:LayoutSection(key)
     frameDb.point = stableAnchor
     frameDb.x     = math.floor(stableX + 0.5)
     frameDb.y     = math.floor(stableY + 0.5)
+end
+
+local FONT_OPTIONS = {
+    { text = "Friz Quadrata (Default)", value = "Fonts\\FRIZQT__.TTF" },
+    { text = "Arial Narrow", value = "Fonts\\ARIALN.TTF" },
+    { text = "Morpheus", value = "Fonts\\MORPHEUS.TTF" },
+    { text = "Skurri", value = "Fonts\\skurri.TTF" },
+}
+
+local function canEditSection(key)
+    local db = addon.db.combatTracker
+    return db.enabled and db.frames[key].enabled and not InCombatLockdown()
+end
+
+function CT:UpdateSectionFrameSettings(frame, key, LibEditMode)
+    local db = addon.db.combatTracker
+    local textSections = { key }
+    for _, sec in ipairs(sections) do
+        if sec.name ~= key and db.frames[sec.name].mergeInto == key then
+            table.insert(textSections, sec.name)
+        end
+    end
+
+    local selected = frame._ctTextSection or key
+    local valid = false
+    for _, sectionKey in ipairs(textSections) do
+        if sectionKey == selected then valid = true break end
+    end
+    if not valid then
+        selected = key
+        frame._ctTextSection = key
+    end
+
+    local function getTextKey()
+        return frame._ctTextSection or key
+    end
+
+    local function refreshDialog()
+        LibEditMode:RefreshFrameSettings(frame)
+    end
+
+    local settings = {
+        {
+            kind = LibEditMode.SettingType.Slider, name = "Icon width", default = 36,
+            minValue = 16, maxValue = 80, valueStep = 1,
+            disabled = function() return not canEditSection(key) end,
+            get = function() return db.frames[key].iconWidth or 36 end,
+            set = function(_, value)
+                if not canEditSection(key) then return end
+                db.frames[key].iconWidth = math.max(16, math.min(80, math.floor(value + 0.5)))
+                CT:LayoutSection(key)
+            end,
+        },
+        {
+            kind = LibEditMode.SettingType.Slider, name = "Icon height", default = 36,
+            minValue = 16, maxValue = 80, valueStep = 1,
+            disabled = function() return not canEditSection(key) end,
+            get = function() return db.frames[key].iconHeight or 36 end,
+            set = function(_, value)
+                if not canEditSection(key) then return end
+                db.frames[key].iconHeight = math.max(16, math.min(80, math.floor(value + 0.5)))
+                CT:LayoutSection(key)
+            end,
+        },
+    }
+
+    if #textSections > 1 then
+        local values = {}
+        for _, sectionKey in ipairs(textSections) do
+            table.insert(values, { text = sectionKey:sub(1, 1):upper() .. sectionKey:sub(2), value = sectionKey })
+        end
+        table.insert(settings, {
+            kind = LibEditMode.SettingType.Dropdown, name = "Text section", default = key,
+            values = values,
+            get = getTextKey,
+            set = function(_, value, fromReset)
+                if fromReset then return end
+                frame._ctTextSection = value
+                refreshDialog()
+            end,
+        })
+    end
+
+    table.insert(settings, {
+        kind = LibEditMode.SettingType.Checkbox, name = "Show stack count", default = true,
+        disabled = function() return not canEditSection(getTextKey()) end,
+        get = function() return db.frames[getTextKey()].stackCountEnabled ~= false end,
+        set = function(_, value)
+            local textKey = getTextKey()
+            if not canEditSection(textKey) then return end
+            db.frames[textKey].stackCountEnabled = value
+            sectionMap[textKey]:RebuildIcons()
+        end,
+    })
+    table.insert(settings, {
+        kind = LibEditMode.SettingType.Slider, name = "Stack count font size", default = 12,
+        minValue = 8, maxValue = 24, valueStep = 1,
+        disabled = function() return not canEditSection(getTextKey()) end,
+        get = function() return db.frames[getTextKey()].stackCountFontSize or 12 end,
+        set = function(_, value)
+            local textKey = getTextKey()
+            if not canEditSection(textKey) then return end
+            db.frames[textKey].stackCountFontSize = math.max(8, math.min(24, math.floor(value + 0.5)))
+            CT:ApplySectionFont(textKey)
+        end,
+    })
+    table.insert(settings, {
+        kind = LibEditMode.SettingType.Dropdown, name = "Stack count font", default = "Fonts\\FRIZQT__.TTF",
+        values = FONT_OPTIONS,
+        disabled = function() return not canEditSection(getTextKey()) end,
+        get = function() return db.frames[getTextKey()].stackCountFont or "Fonts\\FRIZQT__.TTF" end,
+        set = function(_, value)
+            local textKey = getTextKey()
+            if not canEditSection(textKey) then return end
+            db.frames[textKey].stackCountFont = value
+            CT:ApplySectionFont(textKey)
+        end,
+    })
+    table.insert(settings, {
+        kind = LibEditMode.SettingType.Checkbox, name = "Show cooldown count", default = true,
+        disabled = function() return not canEditSection(getTextKey()) end,
+        get = function() return db.frames[getTextKey()].cdCountEnabled ~= false end,
+        set = function(_, value)
+            local textKey = getTextKey()
+            if not canEditSection(textKey) then return end
+            db.frames[textKey].cdCountEnabled = value
+            CT:ApplyCooldownFont(textKey)
+        end,
+    })
+    table.insert(settings, {
+        kind = LibEditMode.SettingType.Slider, name = "Cooldown count font size", default = 14,
+        minValue = 8, maxValue = 24, valueStep = 1,
+        disabled = function() return not canEditSection(getTextKey()) end,
+        get = function() return db.frames[getTextKey()].cdCountFontSize or 14 end,
+        set = function(_, value)
+            local textKey = getTextKey()
+            if not canEditSection(textKey) then return end
+            db.frames[textKey].cdCountFontSize = math.max(8, math.min(24, math.floor(value + 0.5)))
+            CT:ApplyCooldownFont(textKey)
+        end,
+    })
+    table.insert(settings, {
+        kind = LibEditMode.SettingType.Dropdown, name = "Cooldown count font", default = "Fonts\\FRIZQT__.TTF",
+        values = FONT_OPTIONS,
+        disabled = function() return not canEditSection(getTextKey()) end,
+        get = function() return db.frames[getTextKey()].cdCountFont or "Fonts\\FRIZQT__.TTF" end,
+        set = function(_, value)
+            local textKey = getTextKey()
+            if not canEditSection(textKey) then return end
+            db.frames[textKey].cdCountFont = value
+            CT:ApplyCooldownFont(textKey)
+        end,
+    })
+
+    LibEditMode:AddFrameSettings(frame, settings)
+end
+
+function CT:RefreshSectionFrameSettings()
+    local LibEditMode = LibStub and LibStub("LibEditMode", true)
+    if not LibEditMode then return end
+    for _, sec in ipairs(sections) do
+        local frame = self.frames[sec.name]
+        if frame then self:UpdateSectionFrameSettings(frame, sec.name, LibEditMode) end
+    end
 end
 
 -- ── Section anchor frames ─────────────────────────────────────────────────────
@@ -279,6 +443,7 @@ function CT:CreateSectionFrame(key)
     if LibEditMode then
         local displayName = "MathWroQOL - CT " .. key:sub(1,1):upper() .. key:sub(2)
         LibEditMode:AddFrame(frame, function(_, _, point, x, y)
+            if not canEditSection(key) then return end
             db.frames[key].point = point
             db.frames[key].x     = math.floor(x + 0.5)
             db.frames[key].y     = math.floor(y + 0.5)
@@ -288,6 +453,7 @@ function CT:CreateSectionFrame(key)
             x     = frameDb.x or 0,
             y     = frameDb.y or 0,
         }, displayName)
+        self:UpdateSectionFrameSettings(frame, key, LibEditMode)
     end
 
     return frame
@@ -302,6 +468,7 @@ function CT:Initialize()
     for _, sec in ipairs(sections) do
         self.frames[sec.name] = self:CreateSectionFrame(sec.name)
     end
+    self:RefreshSectionFrameSettings()
 
     -- Let each section set up its event frame and do initial icon scan
     for _, sec in ipairs(sections) do
@@ -314,6 +481,7 @@ end
 
 function CT:Apply()
     local db = addon.db.combatTracker
+    self:RefreshSectionFrameSettings()
 
     -- Show or hide each section's anchor frame
     for _, sec in ipairs(sections) do
@@ -402,11 +570,8 @@ function CT:ApplyMasque()
             local group = masqueGroups[sec.name]
             if group then
                 for _, btn in ipairs(sec.buttons) do
-                    RegisterButtonWithMasque(group, btn)
-                    btn:SetSize(
-                        db.frames[sec.name].iconWidth,
-                        db.frames[sec.name].iconHeight
-                    )
+                    local hostDb = db.frames[self:GetHostKey(sec.name)]
+                    btn:SetSize(hostDb.iconWidth, hostDb.iconHeight)
                     group:ReSkin(btn)
                 end
             end
