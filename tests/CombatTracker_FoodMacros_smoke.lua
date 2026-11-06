@@ -1,7 +1,9 @@
 -- Developer-only: managed General macros follow the current food/water selection.
 local combat, events, macros, characterMacros = false, {}, {}, {}
 local writes = 0
-MAX_ACCOUNT_MACROS = 6
+-- Both clients expose the namespace even before Blizzard_MacroUI is loaded.
+MAX_ACCOUNT_MACROS = nil
+Constants = { MacroConsts = { MAX_ACCOUNT_MACROS = 6 } }
 function InCombatLockdown() return combat end
 function CreateFrame()
     return {
@@ -11,13 +13,14 @@ function CreateFrame()
 end
 function GetNumMacros() return #macros, #characterMacros end
 function GetMacroInfo(index)
-    local macro = index <= MAX_ACCOUNT_MACROS and macros[index] or characterMacros[index - MAX_ACCOUNT_MACROS]
+    local capacity = Constants.MacroConsts.MAX_ACCOUNT_MACROS
+    local macro = index <= capacity and macros[index] or characterMacros[index - capacity]
     if macro then return macro.name, macro.icon, macro.body end
 end
 function CreateMacro(name, icon, body, perCharacter)
     assert(not combat, "must not create macros in combat")
     assert(not perCharacter, "smart macros belong in General, not character slots")
-    assert(#macros < MAX_ACCOUNT_MACROS, "must preflight available account slots")
+    assert(#macros < Constants.MacroConsts.MAX_ACCOUNT_MACROS, "must preflight available account slots")
     macros[#macros + 1] = { name = name, icon = icon, body = body }
     table.sort(macros, function(a, b) return a.name < b.name end)
     writes = writes + 1
@@ -96,9 +99,9 @@ CT:UpdateFoodMacros()
 assert(named("MQOL Food").body == "/say user food", "automatic updates must also honor ownership")
 -- Preflight both names and capacity before allocating either macro.
 macros = {}
-for index = 1, MAX_ACCOUNT_MACROS - 1 do macros[index] = { name = "User " .. index, body = "/say kept" } end
+for index = 1, Constants.MacroConsts.MAX_ACCOUNT_MACROS - 1 do macros[index] = { name = "User " .. index, body = "/say kept" } end
 before = writes
-assert(not CT:CreateFoodWaterMacros() and #macros == MAX_ACCOUNT_MACROS - 1 and writes == before,
+assert(not CT:CreateFoodWaterMacros() and #macros == Constants.MacroConsts.MAX_ACCOUNT_MACROS - 1 and writes == before,
     "one free slot must not leave a half-created pair")
 macros = {}
 combat = true

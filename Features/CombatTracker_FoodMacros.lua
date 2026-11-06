@@ -77,7 +77,7 @@ function CT:CreateFoodWaterMacros()
     local found, message = findMacros()
     if not found then return false, message end
     local missing = (found.food and 0 or 1) + (found.water and 0 or 1)
-    if GetNumMacros() + missing > MAX_ACCOUNT_MACROS then
+    if GetNumMacros() + missing > Constants.MacroConsts.MAX_ACCOUNT_MACROS then
         return false, "Not enough General macro slots. Free " .. missing .. " slot(s), then try again."
     end
     CT.sections.consumables:ScanBags()
