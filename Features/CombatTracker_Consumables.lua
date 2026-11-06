@@ -179,8 +179,20 @@ local function getFoodWaterType(self, itemID, excludeBuffFood)
     return isFood, isWater, spellID, minLevel or 0, itemLevel or 0
 end
 
+local function isConjuredFood(itemID)
+    local tooltip = C_TooltipInfo.GetItemByID(itemID)
+    if not tooltip then return false end
+    for _, line in ipairs(tooltip.lines) do
+        if line.leftText == ITEM_CONJURED then return true end
+    end
+    return false
+end
+
 local function isBetterCandidate(candidate, current, preference)
     if not current then return true end
+    if candidate.isMageFood ~= current.isMageFood then
+        return candidate.isMageFood
+    end
     if candidate.minLevel ~= current.minLevel then
         return candidate.minLevel > current.minLevel
     end
@@ -277,6 +289,7 @@ function consumables:ScanBags()
             local candidate = (isFood or isWater) and {
                 itemID = itemID, icon = item.icon, count = item.count, spellID = spellID,
                 minLevel = minLevel, itemLevel = itemLevel,
+                isMageFood = frameDb.preferMageFood == true and isConjuredFood(itemID),
             }
             if candidate and isFood and frameDb.showFood
                 and isBetterCandidate(candidate, foodCandidate, frameDb.foodWaterPreference) then

@@ -88,10 +88,12 @@ On-use trinkets use their equipped item's full cooldown, including in combat, ra
 
 **Food & Water** *(disabled by default)*
 
-In `/mqol` → **Combat Tracker** → **Consumables**, enable **Food** and/or **Water**. Highest required level always takes priority. **Same-level food/water preference** chooses the next rule:
+In `/mqol` → **Combat Tracker** → **Consumables**, enable **Food** and/or **Water**. By default, highest required level takes priority. **Same-level food/water preference** chooses the next rule:
 
 - **Highest item level** (default): keep the previous selection rule.
 - **Most in bags**: choose the item with the greatest total count across every bag stack. Equal counts fall back to item level; remaining ties use the lowest item ID.
+
+**Prefer mage food and water** defaults off. Enable it to prefer eligible conjured food/water over ordinary items, even when the ordinary item has a higher required level or count. Within each group, the existing level and same-level preference rules still apply. If no eligible mage item remains, selection falls back to ordinary food/water. Buff-food exclusion and character requirements still apply; combined food/water refreshments show one icon.
 
 **Exclude food that grants buffs** defaults off. When enabled, automatic selection accepts only verified restoration-only food effects; buff-granting and unrecognized effects are skipped. This is deliberately conservative because the item API has no food-buff flag. A rejected food/water hybrid cannot bypass the filter through the water selection. Explicitly configured **Custom Items** are unaffected. The checkbox tooltip explains this policy.
 

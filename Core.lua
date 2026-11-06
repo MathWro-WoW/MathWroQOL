@@ -247,6 +247,7 @@ local defaults = {
                 showWater = false,
                 foodWaterPreference = "itemLevel",
                 excludeBuffFood = false,
+                preferMageFood = false,
                 customItems = {},
                 itemOrder = {},
                 desaturateOnCD = false,

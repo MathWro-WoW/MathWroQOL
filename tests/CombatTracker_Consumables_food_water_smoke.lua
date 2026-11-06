@@ -61,6 +61,17 @@ C_PlayerInfo = {
     end,
 }
 
+ITEM_CONJURED = "Herbeigezaubert"
+C_TooltipInfo = {
+    GetItemByID = function(itemID)
+        local item = items[itemID]
+        if not item or not item.cached or item.tooltipMissing then return nil end
+        local lines = { { leftText = "Item " .. itemID } }
+        if item.conjured then lines[#lines + 1] = { leftText = ITEM_CONJURED } end
+        return { lines = lines }
+    end,
+}
+
 C_Spell = {
     GetSpellName = function(spellID)
         if spellID == 433 or spellID == 274911 or spellID == 65422 then return "Food" end
@@ -344,6 +355,73 @@ section:ScanBags()
 assert(not section.buttons[1]:IsShown() and not section.buttons[2]:IsShown(),
     "an all-buff-food bag must show no automatic food icon rather than a missing-item fallback")
 selectionDb.excludeBuffFood = false
+
+-- Opt-in mage priority outranks level/quantity, but never character requirements.
+defineItem(1113, 433, 1, 5)
+defineItem(5350, 430, 1, 5)
+items[1113].conjured, items[5350].conjured = true, true
+setBags({
+    { itemID = 1113, stackCount = 1 }, { itemID = 5350, stackCount = 2 },
+    { itemID = 800, stackCount = 40 }, { itemID = 810, stackCount = 40 },
+})
+selectionDb.foodWaterPreference = "quantity"
+section:ScanBags()
+assert(section.buttons[1]._itemID == 800 and section.buttons[2]._itemID == 810,
+    "without mage priority, higher-level ordinary food and water must still win")
+selectionDb.preferMageFood = true
+section:ScanBags()
+assert(section.buttons[1]._itemID == 1113 and section.buttons[1].count == "1"
+    and section.buttons[2]._itemID == 5350 and section.buttons[2].count == "2",
+    "mage priority must prefer eligible conjured food and water over higher-level, more plentiful ordinary items")
+
+defineItem(1114, 434, 1, 10)
+items[1114].conjured = true
+bags[1][#bags[1] + 1] = { itemID = 1114, stackCount = 3 }
+section:ScanBags()
+assert(section.buttons[1]._itemID == 1114,
+    "normal same-level preference must still choose among mage foods")
+bags[1][1].stackCount = 8
+section:ScanBags()
+assert(section.buttons[1]._itemID == 1113,
+    "quantity preference must rank mage foods by count rather than item level")
+selectionDb.foodWaterPreference = "itemLevel"
+section:ScanBags()
+assert(section.buttons[1]._itemID == 1114,
+    "item-level preference must still rank mage foods by item level")
+items[1114].minLevel = 32
+items[1113].usable = false
+section:ScanBags()
+assert(section.buttons[1]._itemID == 800 and section.buttons[2]._itemID == 5350,
+    "unusable mage food must fall back to eligible ordinary food without losing mage water")
+
+-- A mage refreshment can satisfy both categories without creating duplicate icons.
+defineItem(113509, 1291857, 20, 30)
+items[113509].conjured = true
+setBags({
+    { itemID = 113509, stackCount = 2 },
+    { itemID = 800, stackCount = 40 }, { itemID = 810, stackCount = 40 },
+}, { { itemID = 113509, stackCount = 4 } })
+selectionDb.excludeBuffFood = true
+section:ScanBags()
+assert(section.buttons[1]._itemID == 113509 and section.buttons[1].count == "6"
+    and not section.buttons[2]:IsShown(),
+    "mage food/water hybrids must sum stacks, remain one icon, and work with buff exclusion")
+items[113509].tooltipMissing = true
+section:ScanBags()
+assert(section.buttons[1]._itemID == 800 and section.buttons[2]._itemID == 810,
+    "missing conjured tooltip metadata must leave normal selection available")
+items[113509].tooltipMissing = false
+items[113509].spellID, items[113509].spellName = 1248378, "Nahrhafte Nahrung"
+section:ScanBags()
+assert(section.buttons[1]._itemID == 800 and section.buttons[2]._itemID == 810,
+    "mage priority must not bypass buff-food exclusion")
+items[113509].spellID, items[113509].spellName = 1291857, nil
+selectionDb.preferMageFood = false
+section:ScanBags()
+assert(section.buttons[1]._itemID == 800 and section.buttons[2]._itemID == 810,
+    "turning mage priority off must restore normal food/water ranking")
+selectionDb.excludeBuffFood = false
+selectionDb.foodWaterPreference = "itemLevel"
 
 -- Forever uses a separate verified catalog and retains item-spell cooldowns.
 addon.isForever = true

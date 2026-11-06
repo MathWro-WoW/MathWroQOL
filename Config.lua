@@ -2885,6 +2885,16 @@ local function BuildCombatTrackerPanel()
         preference:SetDropdownWidth(220)
         table.insert(refreshFns, function() preference:Refresh() end)
 
+        local preferMageFoodCB = MakeCheckbox(parent, "Prefer mage food and water", 0, 0,
+            function() return addon.db.combatTracker.frames.consumables.preferMageFood == true end,
+            function(value)
+                addon.db.combatTracker.frames.consumables.preferMageFood = value
+                addon:NotifyFeature("combatTracker")
+            end)
+        preferMageFoodCB:ClearAllPoints()
+        preferMageFoodCB:SetPoint("TOPLEFT", preference, "BOTTOMLEFT", -4, -8)
+        table.insert(refreshFns, function() preferMageFoodCB:Refresh() end)
+
         local excludeBuffFoodCB = MakeCheckbox(parent, "Exclude food that grants buffs", 0, 0,
             function() return addon.db.combatTracker.frames.consumables.excludeBuffFood == true end,
             function(value)
@@ -2892,7 +2902,7 @@ local function BuildCombatTrackerPanel()
                 addon:NotifyFeature("combatTracker")
             end)
         excludeBuffFoodCB:ClearAllPoints()
-        excludeBuffFoodCB:SetPoint("TOPLEFT", preference, "BOTTOMLEFT", -4, -8)
+        excludeBuffFoodCB:SetPoint("TOPLEFT", preferMageFoodCB, "BOTTOMLEFT", 0, -4)
         excludeBuffFoodCB:HookScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText("Exclude food that grants buffs")
@@ -2906,7 +2916,7 @@ local function BuildCombatTrackerPanel()
         foodSelectionGuide:SetPoint("TOPLEFT", excludeBuffFoodCB, "BOTTOMLEFT", 4, -6)
         foodSelectionGuide:SetWidth(430)
         foodSelectionGuide:SetJustifyH("LEFT")
-        foodSelectionGuide:SetText("Highest required level takes priority. Most in bags uses the combined count across all bag stacks.")
+        foodSelectionGuide:SetText("Mage priority, when enabled, comes first. Highest required level wins within each group; Most in bags compares total counts at the same level.")
 
         -- ── Item Display Order (nested collapsible) ──
         local orderSection = MakeCollapsibleSection(parent, "Item Display Order", false)
