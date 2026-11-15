@@ -16,6 +16,10 @@ local defaults = {
         scale = 1.0,
         moveable = false,
     },
+    hearthstoneZone = {
+        enabled = false,
+        characters = {},
+    },
     buffHealthColor = {
         enabled = false,
         selectedBuff = "atonement",

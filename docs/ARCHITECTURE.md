@@ -56,17 +56,18 @@ Defined in `MathWroQOL.toc`:
 19. `Features\CMCMasque.lua`
 20. `Features\HeroicStrike.lua`
 21. `Features\AuctionFilter.lua`
-22. `Features\CombatLog.lua`
-23. `Features\CVarSettings.lua`
-24. `Features\EditModeNudge.lua`
-25. `Features\CombatTracker.lua`
-26. `Features\CombatTracker_Racials.lua`
-27. `Features\CombatTracker_Trinkets.lua`
-28. `Features\CombatTracker_Consumables.lua`
-29. `Features\CombatTracker_FoodActions.lua`
-30. `Features\CombatTracker_FoodMacros.lua`
-31. `Features\ExternalTracker.lua`
-32. `Features\FolioEquipmentSets.lua`
+22. `Features\HearthstoneZone.lua`
+23. `Features\CombatLog.lua`
+24. `Features\CVarSettings.lua`
+25. `Features\EditModeNudge.lua`
+26. `Features\CombatTracker.lua`
+27. `Features\CombatTracker_Racials.lua`
+28. `Features\CombatTracker_Trinkets.lua`
+29. `Features\CombatTracker_Consumables.lua`
+30. `Features\CombatTracker_FoodActions.lua`
+31. `Features\CombatTracker_FoodMacros.lua`
+32. `Features\ExternalTracker.lua`
+33. `Features\FolioEquipmentSets.lua`
 
 ---
 
@@ -140,6 +141,7 @@ Four surfaces to wire:
 | CMC Masque | `CMCMasque.lua` | `cmcMasque` | Registers CooldownManagerCentered Essential, Utility, and Buff Icon viewer buttons with Masque when both addons are loaded |
 | Heroic Strike | `HeroicStrike.lua` | `heroicStrike` | Opt-in Arms proc companion beside EllesmereUI's primary Buffs row or Blizzard's Buff Icons viewer; no aura or sortable CDM entry |
 | Auction Filter | `AuctionFilter.lua` | `auctionFilter` | Pre-enables AH filters on open |
+| Hearthstone Destination Zone | `HearthstoneZone.lua` | `hearthstoneZone` | Opt-in, character-specific bind-zone capture and ordinary Hearthstone tooltip enhancement on Retail and Forever |
 | Combat Log | `CombatLog.lua` | `combatLog` | Auto-starts/stops combat logging by instance type and level cap |
 | Camera Distance | `CVarSettings.lua` | `cameraDistance` | When enabled, checks `cameraDistanceMaxZoomFactor` on each login and restores its maximum (`2.6`) value |
 | Spell Queue Window | `CVarSettings.lua` | `spellQueueWindow` | Never writes a value until explicitly enabled; first activation captures the current queue window, and later logins restore that captured or subsequently user-selected value |
@@ -271,6 +273,14 @@ The same file registers `bloodlustTracker` through the private `registerTracker`
 - Config's `addon:CreateFolioEquipmentSetControls(host)` reuses the shared dropdown/backdrop/skin helpers to create the equipment-set selector and Save/Apply/Clear footer beneath the native Folio overlay. Runtime hooks the concrete `ExpansionLandingPage` frame's `OnShow` and `RefreshExpansionOverlay`, mounts only an `overlayFrame` with `RunesOfPowerFrame`, and never forces Blizzard UI loading. Reuse the current host's controls, hide them on disable, and use `IsVisible` to avoid gameplay queries when their native parent is hidden.
 - `SaveSet`, `ApplySet`, `ClearSet`, `HasSavedSet`, `GetSummary`, and `GetEquipmentSetOptions` are the management interface. Runtime owns `RefreshControls(message)`, forwarding to the panel's `Refresh(message)`; saved summary and operation status remain separate. Combat entry/exit refreshes lock all management controls. Clearing removes the association only. `EQUIPMENT_SETS_CHANGED` prunes deleted associations while enabled. Disabled runtime unregisters events/hides owned UI; retained hooks, menu actions, and timer callbacks return before gameplay work.
 
+## Hearthstone Destination Zone
+
+`hearthstoneZone.enabled` defaults false. `characters[playerGUID]` stores only the current `{ location, zone }` destination per character. Capture both localized strings from `GetBindLocation()` and `GetRealZoneText()` on `HEARTHSTONE_BOUND`, never on login or enable. A bind with missing location/zone data clears the old record rather than retaining a stale destination.
+
+Register the event and one retained `TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, ...)` callback lazily on enable. The callback returns immediately while disabled, only touches `GameTooltip` for ordinary Hearthstone item `6948`, rejects secret item IDs/text, and verifies the saved inn against the current bind before editing. A mismatch discards the record. Use `GetLeftLine()` and literal substring matching to append the zone to the existing localized destination text, preserving surrounding text and avoiding duplicate suffixes or identical inn/zone names. Blizzard's tooltip processor calls `Show()` after post-callbacks to recalculate layout. Disable unregisters gameplay events; retained hooks stay inert.
+
+No inn catalog, tooltip-English parsing, periodic scan, or current-zone guess. Players must bind once while enabled; unobserved bindings cannot supply new zone data. Verified API contracts against Forever `1.60.1.70938`, commit [`bebcb6bf309cf41b41bd74f8ca651e6a105b2676`](https://github.com/Gethe/wow-ui-source/tree/bebcb6bf309cf41b41bd74f8ca651e6a105b2676). Native rendering/event timing and real SavedVariables loading require in-game validation.
+
 ---
 
 ## Config.lua Panels
@@ -279,6 +289,7 @@ Settings panels registered via `Settings.RegisterCanvasLayoutCategory` / `Settin
 
 - **Parent** — "MathWro QOL" (container, no interactive controls)
   - **General** — GameMenu scaling / drag / reset position; CDM Button and slash toggles; Auction House filters; opt-in Folio Equipment Sets toggle and native Folio UI guidance
+  - **Small Tweaks** — compact shared home for independent small features; one opt-in Hearthstone destination-zone toggle and bind-once guidance
   - **CVars and Settings** — optional CVar enforcement such as maximum camera distance
   - **Combat Tracker** — master enable; per-section collapsible blocks (Racials, Trinkets, Consumables) for layout/merge and gameplay filters; icon and text appearance live only in the selected section's floating Edit Mode window
   - **External Tracker** — external master enable; selected-spell enable, icon/sound/both mode and SharedMedia sound preview; independent Bloodlust Tracker toggle; separate position resets and guidance for each tracker's Edit Mode appearance controls

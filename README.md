@@ -13,6 +13,7 @@ Forever uses the modern Mainline UI/API family, including Midnight's secret-valu
 | Game Menu scale, dragging, Reset Position | Shared | Native pooled Game Menu and frame APIs are present. |
 | CDM button and shortcuts | Shared, conditional | Requires Blizzard's Cooldown Manager UI; class/spell coverage is supplied by Blizzard. |
 | Auction House filters | Shared | Uses modern auction filters. “Current expansion only” follows Forever's own item data. |
+| Hearthstone destination zone | Shared | Learns the zone when the enabled feature observes a bind; no inn database. Requires one bind after enabling. |
 | Automatic combat logging | Shared | Dungeons, raids, and battlegrounds where available; Mythic+, scenarios, and other absent content types do not become available through the addon. Max-level gating uses the client-reported cap. |
 | Camera distance and Spell Queue Window | Shared | Opt-in enforcement through `C_CVar`; no changes while disabled. |
 | Edit Mode Nudge | Shared | Native Edit Mode and bundled LibEditMode; Ellesmere Unlock Mode also requires its compatible provider module. |
@@ -63,6 +64,18 @@ A separate stat-rune icon appears beside each linked set's **name** in the built
 **Clear saved Folio** removes only the association and icon; it does not delete the equipment set or change gear/current runes. Associations are character-specific, survive `/reload` and set renames, and are removed when an enabled module observes set deletion. Disabled modules retain their saved setups but perform no gameplay work and hide their icons and Folio panel.
 
 The module never purchases unselected rows or spends Folio currency. It preserves unfinished manual Folio edits, rejects unavailable saved choices before changing any rows, and waits for combat to end when a successful set swap requires a rune change. A newer successful set swap supersedes an older deferred request. Busy/restricted Folio changes report a reason; apply again when available. Commit completion is checked against committed selections, with no automatic resubmissions. Another Folio automation addon can compete for these choices; enable only one automatic controller.
+
+### Small Tweaks
+
+Compact, independent quality-of-life options live together under `/mqol` → **Small Tweaks**, rather than adding a settings category for each small feature.
+
+**Hearthstone Destination Zone** *(disabled by default)*
+
+Enable **Show Hearthstone destination zone**, then set your Hearthstone at an inn once. Hover the ordinary Hearthstone in your bags or on an action bar to see its saved zone beside the inn name—for example, **Deepwater Tavern (Wetlands)**. The original tooltip text is preserved around the destination.
+
+The zone is captured only when `HEARTHSTONE_BOUND` fires while enabled, saved separately for each character, and retained across `/reload` and logout. Login and enabling never infer the destination from your current zone. A saved destination that no longer matches your current bind is discarded; until you bind again, the tooltip stays unchanged. Binding while the feature is disabled is not recorded. If the inn and zone names already match, the name is not repeated.
+
+Uses Forever's documented bind event, zone text, and item-tooltip hooks, checked against [1.60.1.70938](https://github.com/Gethe/wow-ui-source/tree/bebcb6bf309cf41b41bd74f8ca651e6a105b2676). Run `lua tests/HearthstoneZone_smoke.lua` for capture, persistence, character isolation, stale destinations, and tooltip safety. In-game validation on Forever and Retail: enable, rebind, travel away, hover from bags/action bars, `/reload`, switch characters, and disable/re-enable. Native tooltip rendering and SavedVariables persistence still require that live-client check.
 
 ### Combat Logging
 

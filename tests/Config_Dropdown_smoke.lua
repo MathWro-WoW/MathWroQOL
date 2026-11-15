@@ -211,6 +211,15 @@ for _, client in ipairs({
     local first = #frames + 1
     local general = upvalue(onLoad, "BuildGeneralPanel")()
     local plugins = upvalue(onLoad, "BuildCDMPluginsPanel")()
+    local tweaks = upvalue(onLoad, "BuildSmallTweaksPanel")()
+    tweaks.scripts.OnShow(tweaks)
+    local hearthstone = assert(findText(first, "Show Hearthstone destination zone"))
+    hearthstone:SetChecked(true)
+    hearthstone.scripts.OnClick(hearthstone)
+    assert(clientAddon.db.hearthstoneZone.enabled, "the Hearthstone toggle must save its enabled state on both clients")
+    clientAddon.db.hearthstoneZone.enabled = false
+    tweaks.scripts.OnShow(tweaks)
+    assert(not hearthstone:GetChecked(), "reopening Small Tweaks must refresh the saved toggle state")
     general.scripts.OnShow(general)
     inCombat = true
     if general.scripts.OnEvent then general.scripts.OnEvent(general, "PLAYER_REGEN_DISABLED") end

@@ -989,6 +989,39 @@ local function BuildGeneralPanel()
     return panel
 end
 
+local function BuildSmallTweaksPanel()
+    local panel = CreateFrame("Frame")
+    panel.name = "Small Tweaks"
+
+    local sc = MakePanelScaffold(panel, panel.name, "MathWroQOL_SmallTweaksScroll")
+    local rootAnchor = CreateFrame("Frame", nil, sc)
+    rootAnchor:SetSize(1, 1)
+    rootAnchor:SetPoint("TOPLEFT", sc, "TOPLEFT", 8, -12)
+
+    local card, content = MakeCard(
+        sc,
+        rootAnchor,
+        "Tooltips",
+        "Small, independent quality-of-life improvements."
+    )
+    local hearthstoneCB = MakeCheckbox(content, "Show Hearthstone destination zone", 12, -2,
+        function() return addon.db.hearthstoneZone.enabled end,
+        function(value)
+            addon.db.hearthstoneZone.enabled = value
+            addon:NotifyFeature("hearthstoneZone")
+        end
+    )
+    local guide = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    guide:SetPoint("TOPLEFT", hearthstoneCB, "BOTTOMLEFT", 20, -6)
+    guide:SetWidth(430)
+    guide:SetJustifyH("LEFT")
+    guide:SetText("Set your Hearthstone at an inn once after enabling. Its tooltip will then include the saved zone, e.g. Deepwater Tavern (Wetlands). Saved separately for each character.")
+    card:SetBottomWidget(guide, 10)
+
+    panel:HookScript("OnShow", function() hearthstoneCB:Refresh() end)
+    return panel
+end
+
 local function BuildCombatLogPanel()
     local panel = CreateFrame("Frame")
     panel.name = "Combat Logging"
@@ -3657,6 +3690,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 
     local parentPanel = BuildParentPanel()
     local generalPanel = BuildGeneralPanel()
+    local smallTweaksPanel = BuildSmallTweaksPanel()
     local combatLogPanel = BuildCombatLogPanel()
     local cvarsAndSettingsPanel = BuildCVarsAndSettingsPanel()
     local combatTrackerPanel = BuildCombatTrackerPanel()
@@ -3669,6 +3703,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
     if Settings and Settings.RegisterCanvasLayoutCategory then
         local parentCat = Settings.RegisterCanvasLayoutCategory(parentPanel, parentPanel.name)
         local generalCat = Settings.RegisterCanvasLayoutSubcategory(parentCat, generalPanel, generalPanel.name)
+        Settings.RegisterCanvasLayoutSubcategory(parentCat, smallTweaksPanel, smallTweaksPanel.name)
         Settings.RegisterCanvasLayoutSubcategory(parentCat, combatLogPanel, combatLogPanel.name)
         Settings.RegisterCanvasLayoutSubcategory(parentCat, cvarsAndSettingsPanel, cvarsAndSettingsPanel.name)
         Settings.RegisterCanvasLayoutSubcategory(parentCat, combatTrackerPanel, combatTrackerPanel.name)
@@ -3687,6 +3722,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
     else
         InterfaceOptions_AddCategory(parentPanel)
         InterfaceOptions_AddCategory(generalPanel, parentPanel)
+        InterfaceOptions_AddCategory(smallTweaksPanel, parentPanel)
         InterfaceOptions_AddCategory(combatLogPanel, parentPanel)
         InterfaceOptions_AddCategory(cvarsAndSettingsPanel, parentPanel)
         InterfaceOptions_AddCategory(combatTrackerPanel, parentPanel)
