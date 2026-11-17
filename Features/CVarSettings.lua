@@ -4,7 +4,7 @@ local CameraDistance = { name = "cameraDistance" }
 addon:RegisterFeature(CameraDistance)
 
 local MAX_CAMERA_DISTANCE_CVAR = "cameraDistanceMaxZoomFactor"
-local MAX_CAMERA_DISTANCE = "2.6"
+local MAX_CAMERA_DISTANCE = addon.isForever and "3.4" or "2.6"
 
 function CameraDistance:Apply()
     local db = addon.db and addon.db.cameraDistance

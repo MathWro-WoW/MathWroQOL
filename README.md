@@ -87,7 +87,7 @@ For Mythic+-only logging, enable **Mythic+** and leave **Dungeon** disabled. Log
 ### CVars and Settings
 
 **Camera Distance** *(disabled by default)*
-Checks `cameraDistanceMaxZoomFactor` each login and restores the Retail maximum of 2.6 when enabled.
+Checks `cameraDistanceMaxZoomFactor` each login and restores 2.6 on Retail or 3.4 on Forever when enabled. Enabling also applies the value immediately; disabling leaves the current value untouched.
 
 **Spell Queue Window** *(disabled by default)*
 Never changes your existing queue window until you explicitly enable it. First activation captures your current value unchanged; use the 0–400ms slider only when you want to enforce a different value on later logins. The options panel shows the client-reported WoW default alongside the selected value.

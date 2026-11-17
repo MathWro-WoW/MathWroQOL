@@ -36,36 +36,41 @@ local retail = loadClient(120100)
 assert(#retail.features == 2, "Retail must register both Retail-only features")
 assert(retail.folioEquipmentSets ~= nil, "Retail must expose Folio feature")
 
-local getCalls, setCalls = 0, 0
-local cameraValue = "2.0"
-GetCVar = function() error("camera settings must not use global GetCVar") end
-SetCVar = function() error("camera settings must not use global SetCVar") end
-C_CVar = {
-    GetCVar = function(name)
-        assert(name == "cameraDistanceMaxZoomFactor")
-        getCalls = getCalls + 1
-        return cameraValue
-    end,
-    SetCVar = function(name, value)
-        assert(name == "cameraDistanceMaxZoomFactor" and value == "2.6")
-        setCalls = setCalls + 1
-        cameraValue = value
-    end,
-}
-local cameraAddon = {
-    db = { cameraDistance = { enabled = true }, spellQueueWindow = { enabled = false } },
-    RegisterFeature = function(self, feature)
-        self.features = self.features or {}
-        self.features[feature.name] = feature
-    end,
-}
-loadFeature("Features/CVarSettings.lua", cameraAddon)
-local camera = cameraAddon.features.cameraDistance
-camera:Apply()
-camera:Apply()
-assert(getCalls == 2 and setCalls == 1, "camera setting must use C_CVar and avoid redundant writes")
-cameraAddon.db.cameraDistance.enabled = false
-camera:Apply()
-assert(setCalls == 1, "disabled camera setting must not write")
+local function checkCameraDistance(addon, expectedValue)
+    local getCalls, setCalls = 0, 0
+    local cameraValue = "2.0"
+    GetCVar = function() error("camera settings must not use global GetCVar") end
+    SetCVar = function() error("camera settings must not use global SetCVar") end
+    C_CVar = {
+        GetCVar = function(name)
+            assert(name == "cameraDistanceMaxZoomFactor")
+            getCalls = getCalls + 1
+            return cameraValue
+        end,
+        SetCVar = function(name, value)
+            assert(name == "cameraDistanceMaxZoomFactor")
+            setCalls = setCalls + 1
+            cameraValue = value
+        end,
+    }
+    addon.db.cameraDistance.enabled = true
+    loadFeature("Features/CVarSettings.lua", addon)
+    local camera = addon.features[#addon.features - 1]
+    camera:Initialize()
+    assert(cameraValue == expectedValue, "login must restore the client-specific camera maximum")
+    camera:Apply()
+    assert(getCalls == 2 and setCalls == 1, "camera setting must avoid redundant writes")
+    addon.db.cameraDistance.enabled = false
+    cameraValue = "1.5"
+    camera:Apply()
+    assert(cameraValue == "1.5" and getCalls == 2 and setCalls == 1,
+        "disabled camera setting must not read or write")
+    addon.db.cameraDistance.enabled = true
+    camera:Apply()
+    assert(cameraValue == expectedValue, "enabling must restore the client-specific camera maximum")
+end
+
+checkCameraDistance(retail, "2.6")
+checkCameraDistance(forever, "3.4")
 
 print("Client feature smoke test: PASS")
