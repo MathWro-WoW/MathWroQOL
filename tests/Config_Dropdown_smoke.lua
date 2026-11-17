@@ -1,252 +1,102 @@
--- Developer-only: opening a sound menu must not recycle its live scroll rows.
--- Models Blizzard Menu.lua's row-pool reuse: SetMenuDescription replaces frames,
--- but an existing scroll data provider is only cleared when the menu closes.
-local frames, mediaNames, mediaFiles = {}, {}, { None = 1 }
-local inCombat = false
-local methods = {}
-for _, name in ipairs({ "SetPoint", "ClearAllPoints", "SetSize", "SetWidth", "SetHeight",
-    "SetBackdrop", "SetBackdropColor", "SetBackdropBorderColor", "SetTextColor", "SetJustifyH",
-    "EnableMouseWheel", "SetScrollChild", "EnableMouse", "SetAlpha", "SetDefaultText",
-    "SetMinMaxValues", "SetValueStep", "SetObeyStepOnDrag", "Hide" }) do
-    methods[name] = function() end
-end
-function methods:SetText(text) self.text = text end
-methods.OverrideText = methods.SetText
-function methods:SetFormattedText(format, ...) self.text = string.format(format, ...) end
-function methods:GetName() return self.name end
-function methods:SetValue(value)
-    if self.scripts.OnValueChanged then self.scripts.OnValueChanged(self, value, false) end
-end
-function methods:SetScript(event, callback) self.scripts[event] = callback end
-function methods:HookScript(event, callback)
-    local previous = self.scripts[event]
-    self.scripts[event] = function(...) if previous then previous(...) end; callback(...) end
-end
-function methods:RegisterEvent() end
-function methods:UnregisterEvent() end
-function methods:GetChildren() return unpack(self.children) end
-function methods:GetRegions() return unpack(self.regions) end
-function methods:GetParent() return self.parent end
-function methods:GetTop() return nil end
-function methods:IsShown() return true end
-function methods:IsObjectType(kind) return self.kind == kind end
-function methods:SetEnabled(enabled) self.enabled = enabled end
-function methods:Enable() self.enabled = true end
-function methods:Disable() self.enabled = false end
-function methods:SetChecked(checked) self.checked = checked end
-function methods:GetChecked() return self.checked end
-function methods:CreateFontString()
-    local region = setmetatable({ parent = self }, { __index = methods })
-    self.regions[#self.regions + 1] = region
-    return region
-end
-methods.CreateTexture = methods.CreateFontString
-function CreateFrame(kind, name, parent)
-    local frame = setmetatable({ kind = kind, name = name, parent = parent, scripts = {}, children = {}, regions = {}, enabled = true, pool = {} }, { __index = methods })
-    frames[#frames + 1] = frame
-    if parent then parent.children[#parent.children + 1] = frame end
-    if kind == "CheckButton" then frame.Text = frame:CreateFontString() end
-    if kind == "Slider" and name then
-        for _, suffix in ipairs({ "Low", "High", "Text" }) do
-            _G[name .. suffix] = frame:CreateFontString()
-        end
-    end
-    return frame
-end
-local rootMethods = {}
-function rootMethods:SetScrollMode(height) self.scrollHeight = height end
-function rootMethods:CreateRadio(label, isSelected, select, value)
-    local item = { label = label, isSelected = isSelected, select = select, value = value }
-    self.items[#self.items + 1] = item
-    return item
-end
-function methods:RebuildLiveRows()
-    local menu = self.menu
-    for _, row in ipairs(menu.frames or {}) do self.pool[#self.pool + 1] = row end
-    menu.frames = {}
-    for _, item in ipairs(self.description.items) do
-        local row = table.remove(self.pool) or {}
-        row.item = item
-        menu.frames[#menu.frames + 1] = row
-    end
-    if self.description.scrollHeight and #menu.frames * 20 > self.description.scrollHeight then
-        if not menu.rows then
-            menu.rows = {}
-            for index, row in ipairs(menu.frames) do menu.rows[index] = row end
-        end
-    else
-        menu.rows = menu.frames
-    end
-end
-function methods:SetupMenu(generator) self.generator = generator end
-function methods:GenerateMenu()
-    self.description = setmetatable({ items = {} }, { __index = rootMethods })
-    self.generator(self, self.description)
-    if self.menu then self:RebuildLiveRows() end
-end
-function methods:IsMenuOpen() return self.menu ~= nil end
-function methods:CloseMenu() self.menu = nil end
-function methods:OpenMenu()
-    self:GenerateMenu()
-    self.menu = {}
-    self:RebuildLiveRows()
-end
-function methods:MouseDown()
-    -- The intrinsic opens first; HookScript("OnMouseDown") runs afterward.
-    if self:IsMenuOpen() then self:CloseMenu() else self:OpenMenu() end
-    if self.scripts.OnMouseDown then self.scripts.OnMouseDown(self) end
-end
-function methods:Pick(value)
-    for _, row in ipairs(self.menu.rows) do
-        if row.item.value == value then
-            row.item.select(value)
-            self:CloseMenu()
-            return
-        end
-    end
-    error("Sound cannot be selected: " .. value)
-end
-local function registerSound(name, file)
-    if not mediaFiles[name] then mediaNames[#mediaNames + 1] = name; table.sort(mediaNames) end
-    mediaFiles[name] = file
-end
-registerSound("BigWigs: Alarm", 123456)
-for index = 1, 40 do registerSound("Sound " .. index, "Interface\\Sounds\\" .. index .. ".ogg") end
-registerSound("Yellow", "Interface\\Sounds\\Yellow.ogg")
-local media = {}
-function media:List() return mediaNames end
-function media:Fetch(_, name) return mediaFiles[name] end
-LibStub = function() return media end
-C_Spell = { GetSpellInfo = function(id) return { name = tostring(id), iconID = id } end }
-C_Timer = { After = function(_, callback) callback() end }
-function InCombatLockdown() return inCombat end
-local settings = { enabled = true, mode = "both", sound = "None" }
-local addon = {
-    db = { externalTracker = { enabled = true, spells = { [33206] = settings } }, bloodlustTracker = { enabled = false } },
-    externalTracker = { spells = { { spellID = 33206, label = "Pain Suppression" } } },
-    NotifyFeature = function() end,
-}
-assert(loadfile("Config.lua"))("MathWroQOL", addon)
-local function upvalue(fn, wanted)
-    for index = 1, 100 do
-        local name, value = debug.getupvalue(fn, index)
-        if name == wanted then return value end
-        if not name then break end
-    end
-    error("Missing test entry point: " .. wanted)
-end
-local buildPanel = upvalue(frames[#frames].scripts.OnEvent, "BuildExternalTrackerPanel")
-local panel = buildPanel()
-local soundDropdown, preview
-for _, frame in ipairs(frames) do
-    if frame.description then
-        for _, item in ipairs(frame.description.items) do
-            if item.value == "BigWigs: Alarm" then soundDropdown = frame end
-        end
-    end
-    if frame.text == "Preview Sound" then preview = frame end
-end
-assert(soundDropdown, "sound selector was not built")
-soundDropdown:MouseDown()
-assert(soundDropdown:IsMenuOpen(), "opening the sound selector must leave it open")
-assert(soundDropdown.menu.rows[1].item.value == "None", "opening a scrolling menu must not recycle live rows into reversed/overlapping entries")
-assert(soundDropdown.menu.rows[#soundDropdown.menu.rows].item.value == "Yellow", "last sound must remain at the bottom")
-soundDropdown:Pick("Yellow")
-assert(settings.sound == "Yellow", "selecting the last sound must save that sound")
--- Another addon registers media after the options panel was already built.
-registerSound("AirHorn", "Interface\\AddOns\\MiniAuras\\Sounds\\Effects\\AirHorn.ogg")
-soundDropdown:MouseDown()
-assert(soundDropdown.menu.rows[2].item.value == "AirHorn", "newly registered sounds must appear on opening, without rebuilding the open menu")
-soundDropdown:Pick("AirHorn")
-local played
-PlaySoundFile = function(file) played = file end
-preview.scripts.OnClick(preview)
-assert(settings.sound == "AirHorn" and played == "Interface\\AddOns\\MiniAuras\\Sounds\\Effects\\AirHorn.ogg", "selection and preview must resolve the newly registered sound")
--- An addon load can refresh controls while a scrolling menu is already open.
-soundDropdown:MouseDown()
-panel.scripts.OnEvent(panel, "ADDON_LOADED", "SomeSoundPack")
-if not soundDropdown:IsMenuOpen() then soundDropdown:MouseDown() end
-assert(soundDropdown.menu.rows[1].item.value == "None" and soundDropdown.menu.rows[2].item.value == "AirHorn", "panel refresh must not corrupt the active scroll provider")
-soundDropdown:Pick("BigWigs: Alarm")
-preview.scripts.OnClick(preview)
-assert(settings.sound == "BigWigs: Alarm" and played == 123456, "numeric SharedMedia files must remain selectable and previewable")
--- A missing pack preserves the selection without substituting another sound.
-mediaFiles.AirHorn = nil
-for index, name in ipairs(mediaNames) do if name == "AirHorn" then table.remove(mediaNames, index); break end end
-settings.sound = "AirHorn"
-panel.scripts.OnEvent(panel, "ADDON_LOADED", "RemovedSoundPack")
-soundDropdown:MouseDown()
-local unavailable
-for _, row in ipairs(soundDropdown.menu.rows) do if row.item.value == "AirHorn" then unavailable = row.item end end
-assert(unavailable and settings.sound == "AirHorn" and not preview.enabled, "unavailable selections must remain visible without enabling a replacement preview")
-print("Config dropdown smoke PASS: live row stability, late media, selection, preview, and missing packs")
+-- Native Settings behavior on both supported clients.
+local H = dofile("tests/SettingsHarness.lua")
 
--- Client gating must omit whole cards, not leave disabled controls or headers.
--- Removing either settings gate must expose an unsupported card and fail here.
-local function findText(first, text)
-    for index = first, #frames do
-        local frame = frames[index]
-        if frame.Text and frame.Text.text == text then return frame end
-        for _, region in ipairs(frame.regions) do
-            if region.text == text then return region end
-        end
+for _, interface in ipairs({ 120100, 16001 }) do
+    local addon = H.load(interface)
+    local tracker = H.catalogs()
+    local names = tracker.sections.racials._allRacialNames
+    tracker.sections.racials._allRacialNames = nil
+    local resets = 0
+    addon:RegisterFeature({ name = "gameMenu", ResetPosition = function() resets = resets + 1 end })
+    addon:RegisterFeature({ name = "racialCatalog", Initialize = function()
+        tracker.sections.racials._allRacialNames = names
+    end })
+    addon.db.gameMenu.scale = 1.35
+    addon.db.cdmButton.slashCM = true
+    addon.db.heroicStrike.enabled = true
+    addon.db.folioEquipmentSets.enabled = true
+    local saved = H.snapshot(addon.db)
+    for _, file in ipairs({ "CombatTracker", "ExternalTracker", "Integrations" }) do
+        assert(loadfile("Config/" .. file .. ".lua"))("MathWroQOL", addon)
+    end
+    assert(loadfile("Config.lua"))("MathWroQOL", addon)
+    H.fire("PLAYER_LOGIN")
+    H.flush()
+    assert(H.snapshot(addon.db) == saved and #H.notified == 0 and #H.itemRequests == 0,
+        "registering every page must preserve saved preferences without applying features or scanning items")
+    SlashCmdList.MQOL()
+    local general
+    for _, category in ipairs(H.categories) do
+        if category:GetID() == H.openedCategoryID then general = { category = category } end
+    end
+    assert(general and general.category:GetName() == "General", "/mqol must open usable General settings")
+    H.open(general)
+    assert(H.get("gameMenu_scale") == 1.35)
+    H.set("gameMenu_scale", 1.4)
+    assert(addon.db.gameMenu.scale == 1.4 and H.notified[#H.notified] == "gameMenu")
+    H.setting("gameMenu_scale"):SetValueToDefault()
+    assert(addon.db.gameMenu.scale == 1)
+    H.click("Reset Position")
+    assert(resets == 0, "position reset must not act while dragging is disabled")
+    H.set("gameMenu_moveable", true)
+    H.click("Reset Position")
+    assert(resets == 1, "position reset must reach the game menu")
+    H.set("cdmButton_slashCM", false)
+    assert(addon.db.cdmButton.slashCM, "a disabled shortcut control must not overwrite saved preferences")
+    H.set("cdmButton_enabled", true)
+    local applied = #H.notified
+    H.set("cdmButton_slashCM", false)
+    assert(not addon.db.cdmButton.slashCM and #H.notified == applied,
+        "shortcut selection must save without reapplying the button")
+    H.set("auctionFilter_usableOnly", true)
+    H.set("hearthstoneZone_enabled", true)
+    assert(addon.db.auctionFilter.usableOnly and addon.db.hearthstoneZone.enabled)
+    applied = #H.notified
+    H.set("combatLog_raid", true)
+    assert(addon.db.combatLog.raid and #H.notified == applied,
+        "logging choices must not override a manual logging stop")
+    H.set("combatTracker_enabled", true)
+    H.set("combatTracker_racials_hiddenSpells_Stoneform", false)
+    assert(addon.db.combatTracker.racials.hiddenSpells.Stoneform,
+        "racial choices must be available after feature catalog initialization")
+    local retail = interface == 120100
+    assert((H.settings.MathWroQOL_folioEquipmentSets_enabled ~= nil) == retail)
+    assert((H.settings.MathWroQOL_heroicStrike_enabled ~= nil) == retail)
+    assert(addon.db.heroicStrike.enabled and addon.db.folioEquipmentSets.enabled,
+        "unsupported client pages must leave saved Retail preferences alone")
+    if retail then
+        H.inCombat = true
+        H.fire("PLAYER_REGEN_DISABLED")
+        H.set("folioEquipmentSets_enabled", false)
+        local folio = H.setting("folioEquipmentSets_enabled")
+        assert(not folio.row.enabled and folio.displayedValue and addon.db.folioEquipmentSets.enabled,
+            "combat rejection must restore the displayed value after native notification")
+        H.inCombat = false
+        H.fire("PLAYER_REGEN_ENABLED")
+        H.set("folioEquipmentSets_enabled", false)
+        assert(not addon.db.folioEquipmentSets.enabled and folio.row.enabled)
     end
 end
 
-for _, client in ipairs({
-    { interface = 16001, retail = false },
-    { interface = 120100, retail = true },
-}) do
-    GetBuildInfo = function() return nil, nil, nil, client.interface end
-    SlashCmdList = {}
-    MathWroQOLDB = nil
-    local clientAddon = {}
-    assert(loadfile("Core.lua"))("MathWroQOL", clientAddon)
-    local coreFrame = frames[#frames]
-    coreFrame.scripts.OnEvent(coreFrame, "ADDON_LOADED", "MathWroQOL")
-    clientAddon.db.heroicStrike.enabled = true
-    clientAddon.db.folioEquipmentSets.enabled = true
-    assert(loadfile("Config.lua"))("MathWroQOL", clientAddon)
-    local onLoad = frames[#frames].scripts.OnEvent
-    local first = #frames + 1
-    local general = upvalue(onLoad, "BuildGeneralPanel")()
-    local plugins = upvalue(onLoad, "BuildCDMPluginsPanel")()
-    local tweaks = upvalue(onLoad, "BuildSmallTweaksPanel")()
-    tweaks.scripts.OnShow(tweaks)
-    local hearthstone = assert(findText(first, "Show Hearthstone destination zone"))
-    hearthstone:SetChecked(true)
-    hearthstone.scripts.OnClick(hearthstone)
-    assert(clientAddon.db.hearthstoneZone.enabled, "the Hearthstone toggle must save its enabled state on both clients")
-    clientAddon.db.hearthstoneZone.enabled = false
-    tweaks.scripts.OnShow(tweaks)
-    assert(not hearthstone:GetChecked(), "reopening Small Tweaks must refresh the saved toggle state")
-    general.scripts.OnShow(general)
-    inCombat = true
-    if general.scripts.OnEvent then general.scripts.OnEvent(general, "PLAYER_REGEN_DISABLED") end
-    inCombat = false
-    if general.scripts.OnEvent then general.scripts.OnEvent(general, "PLAYER_REGEN_ENABLED") end
-    if general.scripts.OnHide then general.scripts.OnHide(general) end
-
-    assert((findText(first, "Folio Equipment Sets") ~= nil) == client.retail,
-        "Folio card must only appear on Retail")
-    assert((findText(first, "Arms Warrior — Heroic Strike") ~= nil) == client.retail,
-        "Heroic Strike card must only appear on Retail")
-    assert((findText(first, "Enable Folio Equipment Sets") ~= nil) == client.retail,
-        "Folio toggle must only appear on Retail")
-    assert((findText(first, "Enable Heroic Strike proc icon") ~= nil) == client.retail,
-        "Heroic Strike toggle must only appear on Retail")
-    local shared = assert(findText(first, "Show CDM button in game menu"))
-    shared:SetChecked(true)
-    shared.scripts.OnClick(shared)
-    assert(clientAddon.db.cdmButton.enabled, "shared controls must remain usable on both clients")
-    assert(findText(first, "Enable Masque skinning"), "shared CDM plugin settings must remain available")
-    assert(clientAddon.db.heroicStrike.enabled and clientAddon.db.folioEquipmentSets.enabled,
-        "building settings must preserve saved Midnight-only preferences")
-    if client.retail then
-        local folio = findText(first, "Enable Folio Equipment Sets")
-        folio:SetChecked(false)
-        folio.scripts.OnClick(folio)
-        assert(not clientAddon.db.folioEquipmentSets.enabled, "Retail Folio toggle must remain usable")
-    end
-end
-print("Config client settings smoke PASS: Forever omission, Retail controls, shared settings, and saved preferences")
+-- Exercise the real CVar feature, including first activation and Defaults.
+local addon = H.load(120100, "Features/CVarSettings.lua")
+H.fire("PLAYER_LOGIN")
+local page = addon.SettingsUI.BuildCVars({})
+H.open(page)
+assert(addon.db.spellQueueWindow.value == nil and #H.cvarWrites == 0)
+H.set("spellQueueWindow_value", 123)
+assert(addon.db.spellQueueWindow.value == nil and #H.cvarWrites == 0,
+    "disabled sliders must not invent an enforced queue window")
+H.set("spellQueueWindow_enabled", true)
+assert(addon.db.spellQueueWindow.value == 277 and #H.cvarWrites == 0,
+    "first activation captures the current CVar without writing it")
+H.set("spellQueueWindow_value", 150)
+assert(H.cvars.SpellQueueWindow == "150" and addon.db.spellQueueWindow.value == 150)
+H.setting("spellQueueWindow_value"):SetValueToDefault()
+assert(addon.db.spellQueueWindow.value == 150 and H.cvars.SpellQueueWindow == "150",
+    "Defaults must not replace a captured/user-selected queue window with 400")
+H.set("spellQueueWindow_enabled", false)
+H.cvars.SpellQueueWindow = "210"
+H.set("spellQueueWindow_enabled", true)
+assert(H.cvars.SpellQueueWindow == "150", "subsequent activation restores the saved value")
+print("Config native smoke PASS: both clients, navigation, saved values, guards, and real CVar activation")

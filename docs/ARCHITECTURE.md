@@ -16,7 +16,7 @@ When adding or moving controls into the floating Edit Mode window, read [Edit Mo
 - The settings subtitle reads `## Version:` through `C_AddOns.GetAddOnMetadata`; keep the release version in the TOC rather than duplicating it in Config.lua.
 - Forever is a Mainline-family game type (`Camelot`, with `Forever` as a client alias), not a Classic API client. The base TOC remains Retail's fallback; the suffixed TOC is selected by Forever. Keep both file lists and all metadata except `Interface` synchronized. BigWigs Packager `@v2` discovers both TOCs and advertises both game versions without a second release job.
 - `Core.lua` sets `addon.isForever` from the interface band `16000 <= interface < 17000`. Do not distinguish the clients with `WOW_PROJECT_ID`: both report Mainline. Do not use `interface >= 100000` to select modern APIs.
-- Heroic Strike and Folio Equipment Sets return before feature registration on Forever; Config omits their entire settings cards rather than showing disabled controls or Retail-only notices. Shared General and CDM Plugins settings remain available, and saved preferences are preserved. Saved enabled settings cannot activate either runtime. Other features share the Mainline implementation; the README compatibility table records provider and game-data limits.
+- Heroic Strike and Folio Equipment Sets return before feature registration on Forever; Config omits their entire settings sections rather than showing disabled controls or Retail-only notices. Shared General and CDM Plugins settings remain available, and saved preferences are preserved. Saved enabled settings cannot activate either runtime. Other features share the Mainline implementation; the README compatibility table records provider and game-data limits.
 - Use current namespaces (`C_Item.GetItemInfo`/`GetItemSpell`/`IsItemDataCachedByID`, `C_SpellBook.IsSpellKnown`, `C_Spell.GetSpellTexture`, `C_CVar`) rather than depending on deprecated global shims. Do not invent Forever catalog IDs from Retail names.
 - Forever source audit baseline: [1.60.1.70707](https://github.com/Gethe/wow-ui-source/tree/aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16). Shared APIs do not certify third-party providers or prove in-game behavior. Validate combat, `/reload`, and cold-start settings persistence on each client.
 
@@ -35,39 +35,12 @@ Loaded before `Core.lua`:
 
 Defined in `MathWroQOL.toc`:
 
-1. `Libs\LibStub\LibStub.lua`
-2. `Libs\LibEditMode\LibEditMode.lua`
-3. `Libs\LibEditMode\pools.lua`
-4. `Libs\LibEditMode\widgets\button.lua`
-5. `Libs\LibEditMode\widgets\checkbox.lua`
-6. `Libs\LibEditMode\widgets\dialog.lua`
-7. `Libs\LibEditMode\widgets\divider.lua`
-8. `Libs\LibEditMode\widgets\dropdown.lua`
-9. `Libs\LibEditMode\widgets\expander.lua`
-10. `Libs\LibEditMode\widgets\extension.lua`
-11. `Libs\LibEditMode\widgets\slider.lua`
-12. `Libs\LibEditMode\widgets\colorpicker.lua`
-13. `Core.lua`
-14. `Config.lua`
-15. `Features\VehicleBar.lua`
-16. `Features\BuffHealthColor.lua`
-17. `Features\GameMenu.lua`
-18. `Features\CDMButton.lua`
-19. `Features\CMCMasque.lua`
-20. `Features\HeroicStrike.lua`
-21. `Features\AuctionFilter.lua`
-22. `Features\HearthstoneZone.lua`
-23. `Features\CombatLog.lua`
-24. `Features\CVarSettings.lua`
-25. `Features\EditModeNudge.lua`
-26. `Features\CombatTracker.lua`
-27. `Features\CombatTracker_Racials.lua`
-28. `Features\CombatTracker_Trinkets.lua`
-29. `Features\CombatTracker_Consumables.lua`
-30. `Features\CombatTracker_FoodActions.lua`
-31. `Features\CombatTracker_FoodMacros.lua`
-32. `Features\ExternalTracker.lua`
-33. `Features\FolioEquipmentSets.lua`
+1. Vendored LibStub, then LibEditMode and its pools/widgets.
+2. `Core.lua`: framework, defaults, and login event handler.
+3. `Config\Native.lua`, `Config\Widgets.xml`, and the page builders in `Config\Simple.lua`, `Config\CombatTracker.lua`, `Config\ExternalTracker.lua`, and `Config\Integrations.lua`; then `Config.lua` for category assembly and the attached Folio controls.
+4. Feature modules in manifest order. `CombatTracker.lua` precedes its section and food/water modules.
+
+Core's `PLAYER_LOGIN` handler initializes features before Config's handler builds categories. This makes initialized racial catalogs available without adding settings-driven gameplay scans. Keep the two TOCs authoritative for the exact file sequence.
 
 ---
 
@@ -121,7 +94,7 @@ Four surfaces to wire:
 1. Create `Features/MyFeature.lua` with the feature contract above
 2. Add `Features\MyFeature.lua` to `MathWroQOL.toc` (use backslash path separator in TOC)
 3. Add default values to the `defaults` table in `Core.lua`, including top-level `enabled = false`
-4. Add UI controls to the correct panel function in `Config.lua`
+4. Add native controls to the appropriate page builder in `Config/`; see Settings Menus below.
 
 ---
 
@@ -211,7 +184,7 @@ addon.editModeNudge = EditModeNudge  -- in EditModeNudge.lua top-level
 
 ### Combat Tracker's floating Edit Mode settings
 
-`CT:CreateSectionFrame` registers both the movable anchor and appearance settings with LibEditMode. Clicking a native highlighted selection opens LibEditMode's floating dialog, using its actual pooled slider/checkbox/dropdown widgets. `Config.lua` retains section enablement, layout/merge/growth, desaturation, exclusions, and item controls, but does not duplicate icon-size or count/cooldown-text appearance controls.
+`CT:CreateSectionFrame` registers both the movable anchor and appearance settings with LibEditMode. Clicking a native highlighted selection opens LibEditMode's floating dialog, using its actual pooled slider/checkbox/dropdown widgets. `Config/CombatTracker.lua` retains section enablement, layout/merge/growth, desaturation, exclusions, and item controls, but does not duplicate icon-size or count/cooldown-text appearance controls.
 
 Existing `frames.<section>` appearance keys are reused without migration: `iconWidth`/`iconHeight` (16–80), `stackCountEnabled`/`stackCountFontSize` (8–24)/`stackCountFont`, and `cdCountEnabled`/`cdCountFontSize` (8–24)/`cdCountFont`. Setters return in combat or while their tracker/section is disabled. Size setters only relayout; font setters apply to existing buttons without rescanning gameplay state. Empty anchors keep the configured footprint so they can still be selected.
 
@@ -246,7 +219,7 @@ For the unresolved Forever report of food icons returning later, possibly after 
 
 ## External Tracker
 
-`ExternalTracker.lua` exports `addon.externalTracker.spells` as the catalog consumed by Config.lua. The master switch defaults off; an absent numeric entry in `externalTracker.spells[spellID]` is disabled. Each configured entry stores `enabled`, `mode` (`icon`, `sound`, `both`), and a LibSharedMedia `sound` key.
+`ExternalTracker.lua` exports `addon.externalTracker.spells` as the catalog consumed by `Config/ExternalTracker.lua`. The master switch defaults off; an absent numeric entry in `externalTracker.spells[spellID]` is disabled. Each configured entry stores `enabled`, `mode` (`icon`, `sound`, `both`), and a LibSharedMedia `sound` key.
 
 The external catalog is selected with `addon.isForever`. Forever groups Protection (`1022`, `5599`, `10278`) and Sacrifice (`6940`, `20729`) into one setting/secure slot per family, and also offers Freedom, Power Infusion, Fear Ward, and Innervate. `spellID` remains the saved-setting key; optional `spellIDs` is the aura candidate map. Sound registrations are per actual aura ID, so disabling a family removes every rank's registration. Midnight's catalog and saved settings are unchanged; unsupported saved entries cannot activate Forever slots or sounds.
 
@@ -283,54 +256,55 @@ No inn catalog, tooltip-English parsing, periodic scan, or current-zone guess. P
 
 ---
 
-## Config.lua Panels
+## Settings Menus
 
-Settings panels registered via `Settings.RegisterCanvasLayoutCategory` / `Settings.RegisterCanvasLayoutSubcategory` (TWW API), with fallback to `InterfaceOptions_AddCategory`:
+Every page uses `Settings.RegisterVerticalLayoutCategory` / `Settings.RegisterVerticalLayoutSubcategory` and Blizzard's native list initializers. Flat section headers replace custom cards, collapsible blocks, and nested configuration buttons. Both supported Mainline-family clients provide the required APIs.
 
-- **Parent** — "MathWro QOL" (container, no interactive controls)
-  - **General** — GameMenu scaling / drag / reset position; CDM Button and slash toggles; Auction House filters; opt-in Folio Equipment Sets toggle and native Folio UI guidance
-  - **Small Tweaks** — compact shared home for independent small features; one opt-in Hearthstone destination-zone toggle and bind-once guidance
-  - **CVars and Settings** — optional CVar enforcement such as maximum camera distance
-  - **Combat Tracker** — master enable; per-section collapsible blocks (Racials, Trinkets, Consumables) for layout/merge and gameplay filters; icon and text appearance live only in the selected section's floating Edit Mode window
-  - **External Tracker** — external master enable; selected-spell enable, icon/sound/both mode and SharedMedia sound preview; independent Bloodlust Tracker toggle; separate position resets and guidance for each tracker's Edit Mode appearance controls
-  - **ElvUI** — ElvUI Vehicle Bar visibility and Buff Health Color controls; all controls disabled when ElvUI is absent
-  - **EllesmereUI** — EllesmereUI Action Bars visibility, native Raid Frames Buff Manager guidance, and the optional Unlock Mode Nudge toggle; controls disabled when the required module is absent
-  - **CDM Plugins** — CooldownManagerCentered Masque skinning and the independent Arms Heroic Strike proc companion
-  - **Edit Mode** — EditModeNudge enable toggle for Blizzard Edit Mode and LibEditMode selections
-  - **Debug** — provider-gated troubleshooting actions for Buff Health Color and Vehicle Bar
+- **Parent** — "MathWro QOL": version, navigation guidance, and Open General action.
+  - **General** — Game Menu scale/drag/reset, CDM button and slash commands, Auction House filters, and Retail-only Folio enablement.
+  - **Small Tweaks** — Hearthstone destination-zone toggle and bind-once guidance.
+  - **Combat Logging** — instance-type choices and maximum-level restriction; edits save without overriding manual logging state.
+  - **CVars and Settings** — camera distance and opt-in Spell Queue Window enforcement.
+  - **Combat Tracker** — Racials, Trinkets, Consumables, Item Display Order, and Masque sections. Native selected-item editor with move/add/remove/reset actions; native dialogs accept custom IDs and trinket exclusions.
+  - **External Tracker** — selected-spell enable/mode/sound controls, preview, and independent External/Bloodlust enablement and position resets.
+  - **ElvUI** — shared Vehicle Bar preferences and a selected-buff editor with native color, frame, spec, and custom-ID controls.
+  - **EllesmereUI** — shared Vehicle Bar preferences, native Raid Frames guidance, and independent Unlock Mode Nudge enablement.
+  - **CDM Plugins** — CMC Masque viewers and Retail-only Heroic Strike placement/glow.
+  - **Edit Mode** — native nudge enablement and appearance-control guidance.
+  - **Debug** — provider-gated Buff Health Color and Vehicle Bar actions.
 
-`/mqol` opens the panel via `Settings.OpenToCategory(parentCat:GetID())` (fallback: `InterfaceOptionsFrame_OpenToCategory`).
+`/mqol` opens General via `Settings.OpenToCategory`. Tracker appearance and position remain owned by Edit Mode as described in [Edit Mode settings](EDIT_MODE_SETTINGS.md); existing layout/merge/growth controls remain in the main menu. Folio's save/apply/clear controls remain attached to Omnium Folio, not duplicated in Settings.
 
----
+### Shared Native Controls
 
-## Config.lua Helper Functions
+`Config/Native.lua` exposes `addon.SettingsUI`; page builders use it rather than creating or skinning Settings widgets themselves.
 
-All are `local function` defined in `Config.lua`. Not global.
+| Helper | Purpose |
+|---|---|
+| `UI.Page` | Native category/subcategory and vertical layout |
+| `UI.Header`, `UI.Text` | Blizzard section heading; addon-owned wrapping note row |
+| `UI.Checkbox`, `UI.Slider`, `UI.Dropdown`, `UI.Color` | Namespaced proxy settings backed by existing DB getters/setters |
+| `UI.Button` | Native action row with a guarded callback |
+| `UI.Input` | Native StaticPopup edit dialog; `apply(text)` returns `false, message` to retain invalid input or `true` to accept |
+| `UI.Refresh` | Coalesced next-frame redraw of the currently visible category only |
 
-| Helper | Signature | Purpose |
-|---|---|---|
-| `MakePanelScaffold` | `(panel, titleText, scrollName)` | Titled panel with scrollable content area; returns scroll child frame |
-| `MakeCard` | `(parent, anchor, title, desc)` | Card frame with title + description; returns `card, content` |
-| `MakeSeparator` | `(parent, anchor, offsetY)` | 1px horizontal line (Frame-wrapped, not bare Texture — see pitfalls) |
-| `MakeCheckbox` | `(parent, label, x, y, getValue, setValue)` | Toggle checkbox with ElvUI skin support |
-| `MakeSliderWithInput` | `(parent, label, min, max, get, set)` | Slider + input box with internal sync guard |
-| `MakeDropdown` | `(parent, options, getValue, setValue, notifyFeature)` | Dropdown; `options` is a list or a function returning it during menu generation. Entries are `{ label, value, icon }` tables or `{ label, action }` rows; optional feature notify name defaults to `combatTracker` |
-| `MakeCollapsibleSection` | `(parent, title, isExpanded)` | Expandable section with header arrow |
-| `ApplyFrameBackdrop` | `(frame, useFadeColor)` | Backdrop with white borders; uses ElvUI colors when loaded |
-| `SetChildrenEnabled` | `(container, enabled)` | Recursively enables/disables and fades all child widgets |
-| `MakeOptionRow` | `(parent, labelText, controlFn)` | **Local to `BuildCombatTrackerPanel` only.** Label-left / control-right row layout |
+Control configuration:
 
----
+- `enabled` controls the native modify predicate; `guard` independently enforces writes/actions, including direct setters and Defaults.
+- `watch` lists short setting IDs for `AddEvaluateStateCVar`; `events` lists native state-evaluation events. `shown` controls conditional rows; `refresh` requests a redraw after an edit.
+- `tooltip` supplies native hover text; sliders can supply a value `formatter`.
+- Getters and registration are read-only. Setters own DB writes and `NotifyFeature`; editor-only selection does not apply gameplay features. An absent spell entry stays absent until an actual edit.
+- A rejected proxy write defers `Settings.NotifyUpdate` until after native notification, restoring the saved displayed value. Provider and combat checks belong in guards, not only disabled visuals.
+- Defaults uses these same setters and guards. Transient spell/item/profile selectors have no default. Selected-buff defaults resolve against that profile; Spell Queue Window has no invented default value.
+- Native colors use opaque ARGB strings at the Settings boundary; saved colors remain `{ r, g, b }`.
+- Dropdown options are fresh functions, with `customOptionHandler` enabling native scrolling. Never regenerate or retain a pooled native dropdown while its menu is open.
+- `Config/Widgets.xml` defines the standalone note row with its own prefixed mixin. Do not modify Blizzard mixins or manually skin native list rows.
 
-## Config.lua Pitfalls
+The remaining local backdrop/dropdown helpers in `Config.lua` serve only `addon:CreateFolioEquipmentSetControls(host)`. Its dropdown closes before regeneration to release live scroll rows. The removed canvas/card/collapsible settings helpers are not an alternate UI convention.
 
-- **Bare Texture two-point anchoring**: A `Texture` with two anchor points on different edges (e.g. `TOPLEFT` + `RIGHT`) will not reliably return `GetBottom()` during initial layout — WoW defers resolution and returns nil. This breaks any code that reads bounds (like `SetBottomWidget`). Wrap in a 1px-height Frame instead; Frames resolve deferred anchors correctly. `MakeSeparator` is a Frame wrapping a texture for exactly this reason.
-- **MakeCard content anchoring**: The content frame inside `MakeCard` must not set both `TOPLEFT` and `TOPRIGHT` with different Y offsets — WoW averages mismatched Y values on same-edge anchors, pushing content behind the card header. Use `TOPLEFT` for position + `RIGHT` for width constraint.
-- **MakeCollapsibleSection arrows**: Use `Soulbinds_Collection_CategoryHeader_Expand` / `Collapse` atlas textures. WoW's default fonts lack `▸`/`▾`.
-- **Always `ClearAllPoints()` before `SetPoint()`** on reused/repositioned widgets.
-- **FontStrings that may wrap**: set `SetWidth()` and `SetJustifyH("LEFT")` explicitly.
-- **Long dropdown lists**: opt into native scrolling with `rootDescription:SetScrollMode(...)` in `MakeDropdown`; screen clamping alone cannot expose off-screen choices. Supply changing lists through an options function. `Refresh` closes an open menu before regenerating: replacing its description otherwise leaves the scroll provider pointing at recycled rows, causing overlap. An `OnMouseDown` hook runs after native menu opening, so it is too late to refresh choices safely.
-- Controls should mutate `addon.db.<feature>` then call `addon:NotifyFeature("<name>")` to push the change back to the feature.
+### Settings Verification
+
+`tests/SettingsHarness.lua` models the native boundary for the Config smoke tests: registration must preserve saved values, unavailable controls must reject writes, selectors must retain independent profiles, and edits must reach feature handlers. The harness does not certify native textures, layout, taint, or third-party runtime compatibility. Check every category in-game at the current UI scale, including long sound lists, ID dialogs, Defaults, combat transitions, optional providers, and Edit Mode.
 
 ---
 
@@ -347,7 +321,7 @@ All are `local function` defined in `Config.lua`. Not global.
 
 - 4-space indentation, no tabs
 - `local` everything — avoid polluting the global namespace
-  - Exceptions: `MathWroQOL = addon` in Core.lua; `addon.combatTracker = CT` / `addon.editModeNudge = EditModeNudge` for cross-file feature access
+  - Exceptions: prefixed XML mixins such as `MathWroQOLSettingsTextMixin`; `MathWroQOL = addon` in Core.lua; cross-file fields such as `addon.SettingsUI`, `addon.combatTracker`, and `addon.editModeNudge`
 - Section headers: `-- ── Section Name ──...` comment bars
 - Inline comments: `--` with two spaces before on the same line
 - No trailing whitespace

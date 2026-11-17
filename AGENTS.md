@@ -7,6 +7,8 @@ Instructions for AI agents (Codex, OpenCode) operating in this repository.
 Read `docs/ARCHITECTURE.md` before writing or modifying any code. It contains the canonical reference for load order, feature contracts, code style, naming conventions, Config.lua helpers, performance rules, and WoW API pitfalls.
 - Target Retail interface: `120100` in `MathWroQOL.toc`; keep it as one value.
 
+Before changing addon settings visuals, sliders, textures, navigation, or Edit Mode control placement, read `.agents/skills/designing-native-addon-ui/SKILL.md`. Keep this repo's ownership contracts in `docs/ARCHITECTURE.md` and implementation recipe in `docs/EDIT_MODE_SETTINGS.md` authoritative.
+
 ---
 
 ### API Documentation
@@ -27,9 +29,11 @@ lua tests/BuffHealthColor_smoke.lua
 lua tests/EditModeNudge_smoke.lua
 lua tests/ExternalTracker_smoke.lua
 lua tests/Config_Dropdown_smoke.lua
+lua tests/Config_Profiles_smoke.lua
+lua tests/Config_CombatTracker_smoke.lua
 lua tests/HeroicStrike_smoke.lua
 lua tests/FolioEquipmentSets_smoke.lua
-luac -p Core.lua Config.lua Features/*.lua tests/*.lua
+luac -p Core.lua Config.lua Config/*.lua Features/*.lua tests/*.lua
 ```
 
 Then validate in-game:

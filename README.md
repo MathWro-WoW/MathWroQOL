@@ -25,20 +25,30 @@ Forever uses the modern Mainline UI/API family, including Midnight's secret-valu
 | Buff Health Color | Provider/data-dependent | Requires compatible ElvUI and matching spell IDs. Built-ins use Retail healer data; custom profiles can use Forever spell IDs. Retail specialization filters are unavailable when the client's deprecated specialization globals are absent; use all-spec custom profiles. Ellesmere Raid Frames provides its own indicators. |
 | CMC Masque skinning | Provider-dependent | Requires compatible CooldownManagerCentered and Masque plus populated Blizzard viewers. |
 | Arms Heroic Strike proc companion | Retail only | Tracks Midnight's temporary Arms spell, not Forever's Heroic Strike. Runtime is not registered and the entire settings card is omitted on Forever. |
-| Folio Equipment Sets | Retail only | Omnium Folio system/tree IDs are Retail-specific. Runtime is not registered and the entire settings card is omitted on Forever, even if saved settings enable it. Saved preferences are preserved. |
+| Folio Equipment Sets | Retail only | Omnium Folio system/tree IDs are Retail-specific. Runtime is not registered and the entire settings section is omitted on Forever, even if saved settings enable it. Saved preferences are preserved. |
 
 Provider integrations remain inactive when their provider is unavailable. Their presence in this table is not a certification of a third-party addon's Forever release. No deprecated global API shim or Classic API fork is installed.
 
 **Install:** extract the same `MathWroQOL` folder into each client's `Interface/AddOns` directory (`_retail_` and `_forever_`). Leave both TOCs in the folder. Each client's WTF directory keeps its own settings; this addon does not copy Retail settings into Forever.
 
-**Launch validation:** load Forever, open `/mqol`, confirm Folio Equipment Sets is absent from General and Heroic Strike is absent from CDM Plugins, then exercise shared features with that character's actual items/spells and optional providers. Confirm both cards remain available on Midnight. Test cooldowns and aura icons in combat, menu positioning, Edit Mode dragging, `/reload`, and a full logout/relaunch for saved settings. Check `!BugGrabber`/BugSack for errors. Early beta builds had community-reported SavedVariables loading failures; persistence on the launch client still needs an in-game check. No macro/CVar persistence workaround is included.
+**Launch validation:** load Forever, open `/mqol`, confirm Folio Equipment Sets is absent from General and Heroic Strike is absent from CDM Plugins, then exercise shared features with that character's actual items/spells and optional providers. Confirm both sections remain available on Midnight. Test cooldowns and aura icons in combat, menu positioning, Edit Mode dragging, `/reload`, and a full logout/relaunch for saved settings. Check `!BugGrabber`/BugSack for errors. Early beta builds had community-reported SavedVariables loading failures; persistence on the launch client still needs an in-game check. No macro/CVar persistence workaround is included.
 
-**Developer checks:** run `lua tests/ClientFeatures_smoke.lua`, `lua tests/ForeverCatalogs_smoke.lua`, `lua tests/CombatTracker_MainlineNamespaces_smoke.lua`, `lua tests/CombatTracker_Consumables_food_water_smoke.lua`, and `lua tests/CombatTracker_EditMode_smoke.lua` alongside the existing feature smoke suite, then `luac -p Core.lua Config.lua Features/*.lua tests/*.lua`. These harnesses cover client gating, ranked external buffs, client-specific racial/consumable selection, food/water selection and counts, and native Edit Mode selection/dialog/widget interactions—not Blizzard's live UI rendering or third-party provider compatibility.
+**Developer checks:** run `lua tests/ClientFeatures_smoke.lua`, `lua tests/ForeverCatalogs_smoke.lua`, `lua tests/CombatTracker_MainlineNamespaces_smoke.lua`, `lua tests/CombatTracker_Consumables_food_water_smoke.lua`, and `lua tests/CombatTracker_EditMode_smoke.lua` alongside the feature smoke suite in `AGENTS.md`, then `luac -p Core.lua Config.lua Config/*.lua Features/*.lua tests/*.lua`. The Config smoke tests cover native-menu saved values, provider/combat guards, profile defaults, item ordering, and late sound media. These harnesses do not certify Blizzard's live UI rendering or third-party provider compatibility.
 
 Sources: [Blizzard Forever UI source, build 70707](https://github.com/Gethe/wow-ui-source/tree/aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16), [Forever API notes and TOC aliases](https://warcraft.wiki.gg/wiki/Patch_1.60.1/API_changes/notes), [BigWigs multi-client packaging](https://github.com/BigWigsMods/packager#building-for-multiple-game-versions), [early beta API/persistence measurements](https://github.com/Thunderz96/forever-addon-kit).
 
 Tracker catalog references: the installed Forever EllesmereUI `EllesmereUI_BuffPresets.lua` and CDM racial catalog, [Forever Alchemy](https://questing.wiki/wow-forever/professions/alchemy/), [Forever First Aid](https://questing.wiki/wow-forever/professions/first-aid/), and [Midnight Food & Drink](https://www.wowhead.com/spell=1291857/food-drink). Catalog data is client-specific; additional consumables can still be added by item ID.
 Forever food examples: [Spiced Wolf Meat](https://questing.wiki/wow-forever/items/2680/) and [Nightfin Soup](https://questing.wiki/wow-forever/items/13931/) use Nutritious Food effects; [Tough Jerky](https://questing.wiki/wow-forever/items/117/) uses a plain restoration effect.
+
+## Settings
+
+`/mqol` now uses Blizzard's native settings list throughout: clear section headings, native sliders with step buttons and value displays, standard controls and hover highlights, and built-in scrolling. Custom cards and collapsible settings blocks are gone. Existing saved preferences are preserved.
+
+Buffs, external spells, and consumable items use a selected-entry editor with their controls on the same page. **Add custom ID**, **Add**, and **Edit Exclusions** open standard input dialogs. Native Defaults uses the normal setters and respects disabled dependencies and combat locks; selecting an editor entry does not reset it. Spell Queue Window keeps its captured/user-selected value.
+
+Tracker position and appearance stay in Blizzard Edit Mode. Layout, merge, growth, tracking choices, and filters stay in `/mqol`. Folio management stays attached to Omnium Folio.
+
+After `/reload`, check every category at your UI scale: slider arrows/dragging, long dropdowns, color selection, input dialogs, unavailable providers, Defaults, and combat locks. Native rendering and taint still require this in-game check.
 
 ## Features
 
@@ -96,6 +106,8 @@ Never changes your existing queue window until you explicitly enable it. First a
 
 **Racials, Trinkets & Consumables**
 Displays icon bars for racial abilities, equipped trinkets, and consumable items (combat potions, healing potions, mana potions, healthstones). Each section tracks cooldowns with swipe animations and optional countdown text. Consumables show stack counts from your inventory. Individual racial abilities can be hidden via the options panel; the Trinkets panel accepts a comma-separated list of item IDs to exclude lore-only or otherwise unwanted on-use trinkets. When both a regular and fleeting version of a consumable are in your bags, only the fleeting version is shown.
+
+Under **Item Display Order**, choose an item, then use **Move Up** / **Move Down**. **Add** accepts a custom item ID; **Remove** applies only to custom items. **Reset Order** restores the current client's enabled catalog plus custom items. Use **Edit Exclusions** in the Trinkets section to edit or clear excluded IDs.
 
 On-use trinkets use their equipped item's full cooldown, including in combat, rather than the potentially shorter use-spell cooldown. Disabled or finished cooldowns clear the countdown and restore icon color. This path is verified against the WoW 12.1.5 APIs.
 

@@ -1,0 +1,16 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <!-- Standalone text row: no Blizzard row mixins or addon methods copied onto pooled native controls. -->
+    <Frame name="MathWroQOLSettingsTextTemplate" mixin="MathWroQOLSettingsTextMixin" virtual="true">
+        <Size y="48"/>
+        <Layers>
+            <Layer level="ARTWORK">
+                <FontString parentKey="Text" inherits="GameFontHighlightSmall" justifyH="LEFT" justifyV="MIDDLE" maxLines="3" wordwrap="true">
+                    <Anchors>
+                        <Anchor point="LEFT" x="37"/>
+                        <Anchor point="RIGHT" x="-20"/>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+    </Frame>
+</Ui>

@@ -2,7 +2,7 @@
 ## Title: MathWro QOL
 ## Notes: Quality of Life improvements by MathWro
 ## Author: MathWro
-## Version: 1.22.1
+## Version: 1.23.0
 ## X-Curse-Project-ID: 1482222
 ## OptionalDeps: ElvUI, EllesmereUI, EllesmereUIActionBars, EllesmereUIRaidFrames, EllesmereUICooldownManager, Masque, CooldownManagerCentered, LibSharedMedia-3.0, SharedMedia, SharedMedia_MyMedia
 ## SavedVariables: MathWroQOLDB
@@ -20,6 +20,12 @@ Libs\LibEditMode\widgets\extension.lua
 Libs\LibEditMode\widgets\slider.lua
 Libs\LibEditMode\widgets\colorpicker.lua
 Core.lua
+Config\Native.lua
+Config\Widgets.xml
+Config\Simple.lua
+Config\CombatTracker.lua
+Config\ExternalTracker.lua
+Config\Integrations.lua
 Config.lua
 Features\VehicleBar.lua
 Features\BuffHealthColor.lua
