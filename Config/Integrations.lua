@@ -508,7 +508,7 @@ function UI.BuildIntegrations(parentCategory, provider)
 end
 
 function UI.BuildCDMPlugins(parentCategory)
-    local page = UI.Page(parentCategory, "CDM Plugins")
+    local page = UI.Page(parentCategory, "Cooldown Manager Tweaks")
     local function available()
         return UI.IsAddonLoaded("CooldownManagerCentered")
             and LibStub ~= nil and LibStub("Masque", true) ~= nil and outOfCombat()
@@ -583,6 +583,40 @@ function UI.BuildCDMPlugins(parentCategory)
         }, gate(heroicEnabled, { "heroicStrike_enabled" }))
     UI.Text(page, "Follows EllesmereUI row size, spacing, appearance and visibility. Empty rows use their starting position. On vertical rows, Right uses the growth end; Left uses the opposite end.")
     UI.Text(page, "Without EllesmereUI CDM, enable Blizzard's Cooldown Manager. Glow appears only while the proc is available.")
+    return page
+end
+
+function UI.BuildOtherAddonTweaks(parentCategory)
+    local page = UI.Page(parentCategory, "Other Addon Tweaks")
+    UI.Header(page, "Other Addon Tweaks")
+    UI.Text(page, "Expand this category on the left to choose an addon. Unavailable integrations remain disabled; existing preferences are preserved.")
+    local children = {
+        UI.BuildIntegrations(page.category, "elvui"),
+        UI.BuildIntegrations(page.category, "ellesmere"),
+        UI.BuildCDMPlugins(page.category),
+    }
+    local pally = UI.Page(page.category, "PallyPower")
+    local function available()
+        return addon.isForever and UI.IsAddonLoaded("PallyPower")
+            and select(2, UnitClass("player")) == "PALADIN" and outOfCombat()
+    end
+    UI.Header(pally, "PallyPower Forever")
+    UI.Checkbox(pally, "pallyPower_enabled", "Hide when assigned blessings are satisfied", false,
+        function() return readDB("pallyPower").enabled == true end,
+        function(value)
+            if not available() then return end
+            editDB("pallyPower").enabled = value == true
+            addon:NotifyFeature("pallyPower")
+        end, gate(available))
+    UI.Text(pally, "Requires PallyPower Forever and a Paladin. Outside combat, hide the buff bar only when your assigned blessings are confirmed present with more than four minutes remaining. Missing or unknown buffs keep it visible.")
+    UI.Text(pally, "Combat restores normal access to the enabled buff buttons. Other paladins' assignments, seals, Righteous Fury and auras are not checked. Assignments and minimap access are unchanged. This option cannot be changed in combat.")
+    children[#children + 1] = pally
+    for _, child in ipairs(children) do
+        local target = child.category
+        UI.Button(page, target:GetName(), "Open " .. target:GetName(), function()
+            Settings.OpenToCategory(target:GetID())
+        end)
+    end
     return page
 end
 
