@@ -75,14 +75,11 @@ Then validate in-game:
 ---
 
 ## Releases
-GitHub Actions only. Use Semantic Versioning: additive features increment MINOR; fixes increment PATCH. Before tagging, set `## Version:` in `MathWroQOL.toc` to `X.Y.Z`. Create and push an annotated tag:
+GitHub Actions only. Use Semantic Versioning: additive features increment MINOR; fixes increment PATCH. Bump `## Version:` in **both** `MathWroQOL.toc` and `MathWroQOL_Camelot.toc` together.
 
-```bash
-git tag -a vX.Y.Z -m "vX.Y.Z"
-git push origin vX.Y.Z
-```
+Merging a manifest version bump into `main` triggers `.github/workflows/release-on-main.yml`: validate matching versions, create/push annotated `vX.Y.Z` at the merged commit, and explicitly dispatch `.github/workflows/release.yml` → `BigWigsMods/packager@v2`. The dispatch is required because tags pushed with `GITHUB_TOKEN` do not trigger another push workflow. Existing versions on earlier commits are skipped; rerunning the same merged commit can redispatch packaging.
 
-Triggers `.github/workflows/release.yml` → `BigWigsMods/packager@v2`.
+Manual releases remain available by creating/pushing an annotated tag, or dispatching `release.yml` with its `tag` input. Keep release tags on merged `main` commits.
 
 Do **not** use comma-separated `## Interface:` values in the TOC — the packager will produce a broken `release.json`.
 
