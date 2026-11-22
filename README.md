@@ -31,3 +31,7 @@ Quality-of-life tweaks for WoW Retail and WoW Forever. Configure features with `
 ## Folio Equipment Sets — Retail
 
 Save full Omnium Folio setups to equipment sets and restore them when switching gear. Saved-stat badges and attached Save, Apply, and Clear controls help manage each setup.
+
+---
+
+*This addon is developed with the assistance of AI.*
