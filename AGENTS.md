@@ -9,6 +9,8 @@ Read `docs/ARCHITECTURE.md` before writing or modifying any code. It contains th
 
 Before changing addon settings visuals, sliders, textures, navigation, or Edit Mode control placement, read `.agents/skills/designing-native-addon-ui/SKILL.md`. Keep this repo's ownership contracts in `docs/ARCHITECTURE.md` and implementation recipe in `docs/EDIT_MODE_SETTINGS.md` authoritative.
 
+Keep `README.md` limited to brief user-facing feature descriptions. Put test commands and validation procedures in `docs/TESTING.md`; keep implementation details and API sources in `docs/ARCHITECTURE.md`.
+
 ---
 
 ### API Documentation

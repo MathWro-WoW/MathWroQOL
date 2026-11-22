@@ -1,0 +1,47 @@
+# Testing MathWroQOL
+
+Run commands from the repository root with Lua 5.1 installed. There is no build step or linter.
+
+## Automated checks
+
+Run every smoke script, then parse all addon and test Lua files:
+
+```bash
+set -e
+for test in tests/*_smoke.lua; do
+    lua "$test"
+done
+luac -p Core.lua Config.lua Config/*.lua Features/*.lua tests/*.lua
+```
+
+For focused changes, run the relevant feature smoke script. Client compatibility is covered by `tests/ClientFeatures_smoke.lua` and `tests/ForeverCatalogs_smoke.lua`. Native settings coverage lives in the `tests/Config_*_smoke.lua` scripts; tracker appearance controls are exercised by `tests/CombatTracker_EditMode_smoke.lua` and `tests/ExternalTracker_smoke.lua`.
+
+These harnesses cover Lua behavior, saved values, provider/combat guards, and simulated UI interactions. They do not certify live Blizzard rendering, secure-frame taint, third-party provider compatibility, or real SavedVariables loading.
+
+## In-game checks
+
+Validate on each client affected by the change:
+
+1. Load the addon, run `/reload`, and check the default error frame or BugGrabber/BugSack.
+2. Open `/mqol` and inspect controls at the current UI scale: sliders, scrolling dropdowns, color selection, input dialogs, Defaults, unavailable providers, and combat locks.
+3. Confirm Retail omits PallyPower, while Forever omits Bloodlust, Heroic Strike, and Folio. Check shared features against the character's actual spells, items, and installed providers.
+4. Exercise combat entry/exit, Edit Mode selection and dragging, feature disable/re-enable, and missing dependencies.
+5. Verify saved preferences after `/reload` and a full logout/relaunch on both clients. Their settings are stored separately.
+
+The per-feature validation table in [AGENTS.md](../AGENTS.md#per-feature-validation) contains the broader gameplay checklist. Additional cases moved from the README:
+
+### Hearthstone destination zone
+
+Enable the feature, bind at an inn, travel away, and hover the Hearthstone from bags and action bars. Check `/reload`, character isolation, stale or changed binds, and disable/re-enable. The zone must come from the observed bind, not the current location. Automated coverage: `tests/HearthstoneZone_smoke.lua`.
+
+### Heroic Strike companion
+
+On Retail Arms, check repeated procs in combat, an Ellesmere Buffs row with no other buffs, and live icon-size/crop/border changes. The companion must remain adjacent, match the row's appearance, and disappear when consumed or its parent is hidden. Test native CDM and Ellesmere CDM independently. Automated coverage: `tests/HeroicStrike_smoke.lua`.
+
+### PallyPower auto-hide
+
+On Forever, expand/collapse Other Addon Tweaks, confirm saved integration preferences, enable auto-hide, finish blessings, and remove one. The bar must return for missing or unknown buffs and at the four-minute refresh threshold. Check personal overrides, roster changes, death/resurrection, restricted/PvP state, entering combat while hidden, combat `/reload`, and disable/re-enable. Inspect native aura overlays as well as the secure casting buttons. Automated coverage: `tests/PallyPower_smoke.lua` and `tests/Config_AddonTweaks_smoke.lua`.
+
+## Implementation references
+
+Client-specific API baselines, ownership contracts, and source links are maintained in [Architecture](ARCHITECTURE.md). Use [Edit Mode settings](EDIT_MODE_SETTINGS.md) when changing tracker appearance controls and [food/water refresh notes](FOOD_WATER_REFRESH_NOTES.md) when investigating the unresolved Forever food-icon report.
