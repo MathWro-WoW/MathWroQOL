@@ -595,22 +595,24 @@ function UI.BuildOtherAddonTweaks(parentCategory)
         UI.BuildIntegrations(page.category, "ellesmere"),
         UI.BuildCDMPlugins(page.category),
     }
-    local pally = UI.Page(page.category, "PallyPower")
-    local function available()
-        return addon.isForever and UI.IsAddonLoaded("PallyPower")
-            and select(2, UnitClass("player")) == "PALADIN" and outOfCombat()
+    if addon.isForever then
+        local pally = UI.Page(page.category, "PallyPower")
+        local function available()
+            return UI.IsAddonLoaded("PallyPower")
+                and select(2, UnitClass("player")) == "PALADIN" and outOfCombat()
+        end
+        UI.Header(pally, "PallyPower Forever")
+        UI.Checkbox(pally, "pallyPower_enabled", "Hide when assigned blessings are satisfied", false,
+            function() return readDB("pallyPower").enabled == true end,
+            function(value)
+                if not available() then return end
+                editDB("pallyPower").enabled = value == true
+                addon:NotifyFeature("pallyPower")
+            end, gate(available))
+        UI.Text(pally, "Requires PallyPower Forever and a Paladin. Outside combat, hide the buff bar only when your assigned blessings are confirmed present with more than four minutes remaining. Missing or unknown buffs keep it visible.")
+        UI.Text(pally, "Combat restores normal access to the enabled buff buttons. Other paladins' assignments, seals, Righteous Fury and auras are not checked. Assignments and minimap access are unchanged. This option cannot be changed in combat.")
+        children[#children + 1] = pally
     end
-    UI.Header(pally, "PallyPower Forever")
-    UI.Checkbox(pally, "pallyPower_enabled", "Hide when assigned blessings are satisfied", false,
-        function() return readDB("pallyPower").enabled == true end,
-        function(value)
-            if not available() then return end
-            editDB("pallyPower").enabled = value == true
-            addon:NotifyFeature("pallyPower")
-        end, gate(available))
-    UI.Text(pally, "Requires PallyPower Forever and a Paladin. Outside combat, hide the buff bar only when your assigned blessings are confirmed present with more than four minutes remaining. Missing or unknown buffs keep it visible.")
-    UI.Text(pally, "Combat restores normal access to the enabled buff buttons. Other paladins' assignments, seals, Righteous Fury and auras are not checked. Assignments and minimap access are unchanged. This option cannot be changed in combat.")
-    children[#children + 1] = pally
     for _, child in ipairs(children) do
         local target = child.category
         UI.Button(page, target:GetName(), "Open " .. target:GetName(), function()

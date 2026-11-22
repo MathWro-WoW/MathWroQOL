@@ -368,6 +368,10 @@ end
 
 registerTracker(ExternalTracker, "External Tracker", 10060)
 
+-- Keep saved Bloodlust preferences, but never register its Retail-only runtime
+-- (including Edit Mode preview and appearance controls) on Forever.
+if addon.isForever then return end
+
 local BloodlustTracker = {
     name = "bloodlustTracker",
     spells = {

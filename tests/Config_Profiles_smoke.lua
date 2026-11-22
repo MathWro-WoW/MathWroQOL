@@ -100,13 +100,23 @@ for _, interface in ipairs({ 120100, 16001 }) do
     addon = H.load(interface, "Config/ExternalTracker.lua")
     H.catalogs()
     UI = addon.SettingsUI
+    if interface == 16001 then addon.db.bloodlustTracker.enabled = true end
     local first, second = addon.externalTracker.spells[1].spellID, addon.externalTracker.spells[2].spellID
     saved = H.snapshot(addon.db)
     local page = UI.BuildExternalTracker({})
     H.open(page)
     assert(H.snapshot(addon.db) == saved and #H.notified == 0)
-    H.set("bloodlustTracker_enabled", true)
-    assert(addon.db.bloodlustTracker.enabled and not addon.db.externalTracker.enabled)
+    if interface == 120100 then
+        H.set("bloodlustTracker_enabled", true)
+        assert(addon.db.bloodlustTracker.enabled and not addon.db.externalTracker.enabled)
+    else
+        assert(not H.settings.MathWroQOL_bloodlustTracker_enabled,
+            "Forever must omit Bloodlust controls even with saved enabled preferences")
+        for _, row in ipairs(page.layout.rows) do
+            assert(row.data.name ~= "Bloodlust Tracker" and row.data.buttonText ~= "Reset Bloodlust Position",
+                "Forever must omit the entire Bloodlust section")
+        end
+    end
     H.set("externalTracker_enabled", true)
     H.set("externalTracker_spell_mode", "both")
     assert(not addon.db.externalTracker.spells[first], "disabled spells must not gain settings from rejected writes")
@@ -153,13 +163,15 @@ for _, interface in ipairs({ 120100, 16001 }) do
     H.click("Preview Sound")
     assert(not H.played, "None must remain silent even when SharedMedia maps it to 1")
     H.set("externalTracker_enabled", false)
-    addon.db.bloodlustTracker.x = 999
-    H.click("Reset Bloodlust Position")
-    assert(addon.db.bloodlustTracker.enabled and addon.db.bloodlustTracker.x == 0,
-        "Bloodlust must remain independently usable with externals disabled")
-    H.inCombat = true
-    H.fire("PLAYER_REGEN_DISABLED")
-    H.set("bloodlustTracker_enabled", false)
-    assert(addon.db.bloodlustTracker.enabled and H.setting("bloodlustTracker_enabled").displayedValue)
+    if interface == 120100 then
+        addon.db.bloodlustTracker.x = 999
+        H.click("Reset Bloodlust Position")
+        assert(addon.db.bloodlustTracker.enabled and addon.db.bloodlustTracker.x == 0,
+            "Bloodlust must remain independently usable with externals disabled")
+        H.inCombat = true
+        H.fire("PLAYER_REGEN_DISABLED")
+        H.set("bloodlustTracker_enabled", false)
+        assert(addon.db.bloodlustTracker.enabled and H.setting("bloodlustTracker_enabled").displayedValue)
+    end
 end
 print("Config profiles smoke PASS: providers, per-profile defaults, custom IDs, independent trackers, and dynamic sound media")

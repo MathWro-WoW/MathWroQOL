@@ -20,7 +20,8 @@ Forever uses the modern Mainline UI/API family, including Midnight's secret-valu
 | Combat Tracker: trinkets | Shared | Discovers equipped on-use items dynamically. |
 | Combat Tracker: racials | Client-specific | Forever uses its own active-racial catalog, including Human, Night Elf, Troll, Gnome, and Skyborne abilities; only spells the character knows are shown. |
 | Combat Tracker: consumables | Client-specific | Forever has its own potion and Healthstone item families; item-use spell IDs come from the client. Midnight retains its own potion/fleeting catalog. Optional food and water icons select usable items from character bags on either client. |
-| External and Bloodlust trackers | Client/data-dependent | Forever's externals use Protection and Sacrifice rank families, Freedom, Power Infusion, Fear Ward, and Innervate. Midnight retains its own external catalog. Bloodlust still matches the existing cataloged buff IDs; no Forever-specific replacement is assumed. |
+| External Tracker | Client/data-dependent | Forever's externals use Protection and Sacrifice rank families, Freedom, Power Infusion, Fear Ward, and Innervate. Midnight retains its own external catalog. |
+| Bloodlust Tracker | Retail only | The entire settings section, runtime, and Edit Mode preview are omitted on Forever; saved preferences are retained. |
 | Vehicle Bar visibility | Provider-dependent | Requires compatible ElvUI or EllesmereUI Action Bars and a relevant vehicle/override state. |
 | Buff Health Color | Provider/data-dependent | Requires compatible ElvUI and matching spell IDs. Built-ins use Retail healer data; custom profiles can use Forever spell IDs. Retail specialization filters are unavailable when the client's deprecated specialization globals are absent; use all-spec custom profiles. Ellesmere Raid Frames provides its own indicators. |
 | CMC Masque skinning | Provider-dependent | Requires compatible CooldownManagerCentered and Masque plus populated Blizzard viewers. |
@@ -49,7 +50,7 @@ Buffs, external spells, and consumable items use a selected-entry editor with th
 
 Tracker position and appearance stay in Blizzard Edit Mode. Layout, merge, growth, tracking choices, and filters stay in `/mqol`. Folio management stays attached to Omnium Folio.
 
-**Other Addon Tweaks** is a native collapsible navigation group containing **ElvUI**, **EllesmereUI**, **Cooldown Manager Tweaks** (formerly CDM Plugins), and **PallyPower**. Existing integration preferences are unchanged. Expand its arrow in the left-hand category list, or use the group's Open buttons.
+**Other Addon Tweaks** is a native collapsible navigation group containing **ElvUI**, **EllesmereUI**, **Cooldown Manager Tweaks** (formerly CDM Plugins), and, on Forever only, **PallyPower**. Client-exclusive options are omitted entirely on the other client: Bloodlust, Heroic Strike, and Folio are Retail-only; PallyPower is Forever-only. Existing preferences are preserved. Expand the group's arrow in the left-hand category list, or use its Open buttons.
 
 After `/reload`, check every category at your UI scale: slider arrows/dragging, long dropdowns, color selection, input dialogs, unavailable providers, Defaults, and combat locks. Native rendering and taint still require this in-game check.
 
@@ -153,7 +154,7 @@ Blizzard's secure Aura Slots manage icon visibility and remaining duration; nati
 
 **Edit Mode appearance:** enable the tracker, open Blizzard Edit Mode, then select **External Tracker** to open its settings panel. Adjust **Icon size** (20–80px), **Show duration text**, **Duration text size** (8–40px), **Icon zoom** (0–30% cropped per edge), and **Glow type** (None, Classic, Modern Proc, or Assisted Combat). These settings apply to all tracked icons. A Power Infusion example with sample duration text previews changes even when no spells are enabled; it disappears on exit and never triggers a sound. Text defaults to visible at 18px; glow defaults to None. Size and visibility changes apply to existing icons without changing Blizzard's duration binding. Settings cannot be changed in combat. Enable/spell/sound options and Reset Position remain in `/mqol`.
 
-### Bloodlust Tracker *(disabled by default)*
+### Bloodlust Tracker *(Retail only; disabled by default)*
 
 In `/mqol` → **External Tracker**, enable **Bloodlust Tracker** for a separate duration icon. It works whether the external tracker is enabled or disabled. Bloodlust, Heroism, Time Warp, Fury of the Aspects, Primal Rage (including its alternate aura), legacy hunter equivalents, and drums through Void-touched Drums are recognized automatically. The icon shows the active buff and its remaining duration, not the Exhaustion/Sated lockout.
 

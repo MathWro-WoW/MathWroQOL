@@ -3,6 +3,7 @@ for _, interface in ipairs({16001, 120100}) do
     local addon = H.load(interface, "Config/Integrations.lua")
     function UnitClass() return "Paladin", "PALADIN" end
     local UI = addon.SettingsUI
+    if interface == 120100 then addon.db.pallyPower.enabled = true end
     local root = UI.Page(nil, "MathWro QOL")
     assert(UI.BuildOtherAddonTweaks, "grouped addon settings must be available")
     local saved = H.snapshot(addon.db)
@@ -20,15 +21,21 @@ for _, interface in ipairs({16001, 120100}) do
     for _, category in ipairs(H.categories) do
         if category.name == "PallyPower" then pally = category end
     end
-    assert(pally and pally.parent == page.category)
-    H.open({ category = pally })
-    H.set("pallyPower_enabled", true)
-    assert(not addon.db.pallyPower.enabled, "missing provider must reject saved changes")
-    H.loaded.PallyPower = true
-    H.fire("ADDON_LOADED", "PallyPower")
-    H.set("pallyPower_enabled", true)
-    assert(addon.db.pallyPower.enabled == (interface == 16001), "PallyPower runtime is Forever only")
-    if interface == 16001 then
+    if interface == 120100 then
+        assert(not pally and not H.settings.MathWroQOL_pallyPower_enabled,
+            "Retail must omit the entire PallyPower page and controls")
+        for _, row in ipairs(H.rows) do
+            assert(row.data.buttonText ~= "Open PallyPower", "Retail must omit PallyPower navigation")
+        end
+    else
+        assert(pally and pally.parent == page.category)
+        H.open({ category = pally })
+        H.set("pallyPower_enabled", true)
+        assert(not addon.db.pallyPower.enabled, "missing provider must reject saved changes")
+        H.loaded.PallyPower = true
+        H.fire("ADDON_LOADED", "PallyPower")
+        H.set("pallyPower_enabled", true)
+        assert(addon.db.pallyPower.enabled)
         H.inCombat = true; H.fire("PLAYER_REGEN_DISABLED")
         H.set("pallyPower_enabled", false)
         assert(addon.db.pallyPower.enabled, "combat must reject edits")

@@ -36,6 +36,19 @@ local retail = loadClient(120100)
 assert(#retail.features == 2, "Retail must register both Retail-only features")
 assert(retail.folioEquipmentSets ~= nil, "Retail must expose Folio feature")
 
+for _, client in ipairs({ forever, retail }) do
+    client.db.bloodlustTracker.enabled = true
+    loadFeature("Features/ExternalTracker.lua", client)
+    local bloodlust
+    for _, feature in ipairs(client.features) do
+        if feature.name == "bloodlustTracker" then bloodlust = feature end
+    end
+    assert((bloodlust ~= nil) == (not client.isForever),
+        "Bloodlust runtime must register only on Retail, regardless of saved enabled state")
+    assert(client.db.bloodlustTracker.enabled, "client gating must preserve saved preferences")
+    assert(client.externalTracker, "shared external tracker must remain available on both clients")
+end
+
 local function checkCameraDistance(addon, expectedValue)
     local getCalls, setCalls = 0, 0
     local cameraValue = "2.0"
