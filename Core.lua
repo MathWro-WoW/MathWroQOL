@@ -20,6 +20,9 @@ local defaults = {
         enabled = false,
         characters = {},
     },
+    pallyPower = {
+        enabled = false,
+    },
     buffHealthColor = {
         enabled = false,
         selectedBuff = "atonement",

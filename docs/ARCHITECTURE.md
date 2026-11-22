@@ -12,11 +12,11 @@ When adding or moving controls into the floating Edit Mode window, read [Edit Mo
 - Retail target: `120100` (Midnight 12.1.0) in `MathWroQOL.toc`. Forever target: `16001` (1.60.1) in `MathWroQOL_Camelot.toc`. **Single value per TOC only** — do not combine the clients into a comma-separated interface list.
 - The fallback TOC basename must match the addon folder (`MathWroQOL/MathWroQOL.toc`); client-specific manifests use recognized suffixes such as `MathWroQOL_Camelot.toc`. Do not rename the addon folder independently.
 - Any hardcoded addon name strings (e.g. `ADDON_LOADED` checks) must use `"MathWroQOL"`.
-- Optional addon integrations are declared via `## OptionalDeps:` so ElvUI, EllesmereUI modules, Masque, and CooldownManagerCentered load first when present.
+- Optional addon integrations are declared via `## OptionalDeps:` so ElvUI, EllesmereUI modules, Masque, CooldownManagerCentered, and PallyPower load first when present.
 - The settings subtitle reads `## Version:` through `C_AddOns.GetAddOnMetadata`; keep the release version in the TOC rather than duplicating it in Config.lua.
 - Forever is a Mainline-family game type (`Camelot`, with `Forever` as a client alias), not a Classic API client. The base TOC remains Retail's fallback; the suffixed TOC is selected by Forever. Keep both file lists and all metadata except `Interface` synchronized. BigWigs Packager `@v2` discovers both TOCs and advertises both game versions without a second release job.
 - `Core.lua` sets `addon.isForever` from the interface band `16000 <= interface < 17000`. Do not distinguish the clients with `WOW_PROJECT_ID`: both report Mainline. Do not use `interface >= 100000` to select modern APIs.
-- Heroic Strike and Folio Equipment Sets return before feature registration on Forever; Config omits their entire settings sections rather than showing disabled controls or Retail-only notices. Shared General and CDM Plugins settings remain available, and saved preferences are preserved. Saved enabled settings cannot activate either runtime. Other features share the Mainline implementation; the README compatibility table records provider and game-data limits.
+- Heroic Strike, Bloodlust Tracker, and Folio Equipment Sets are Retail-only: return before their feature registration on Forever and omit their entire settings sections, including Edit Mode controls. PallyPower auto-hide is Forever-only: omit its entire settings category and navigation button on Retail. Shared General, External Tracker, and Cooldown Manager Tweaks settings remain available. Preserve saved preferences, but never allow saved enabled settings to activate unsupported runtimes. The README compatibility table records provider and game-data limits.
 - Use current namespaces (`C_Item.GetItemInfo`/`GetItemSpell`/`IsItemDataCachedByID`, `C_SpellBook.IsSpellKnown`, `C_Spell.GetSpellTexture`, `C_CVar`) rather than depending on deprecated global shims. Do not invent Forever catalog IDs from Retail names.
 - Forever source audit baseline: [1.60.1.70707](https://github.com/Gethe/wow-ui-source/tree/aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16). Shared APIs do not certify third-party providers or prove in-game behavior. Validate combat, `/reload`, and cold-start settings persistence on each client.
 
@@ -116,13 +116,14 @@ Four surfaces to wire:
 | Auction Filter | `AuctionFilter.lua` | `auctionFilter` | Pre-enables AH filters on open |
 | Hearthstone Destination Zone | `HearthstoneZone.lua` | `hearthstoneZone` | Opt-in, character-specific bind-zone capture and ordinary Hearthstone tooltip enhancement on Retail and Forever |
 | Combat Log | `CombatLog.lua` | `combatLog` | Auto-starts/stops combat logging by instance type and level cap |
+| PallyPower auto-hide | `PallyPower.lua` | `pallyPower` | Forever-only opt-in visibility of your assigned blessings; secure combat-show driver and fresh nonsecret out-of-combat confirmation |
 | Camera Distance | `CVarSettings.lua` | `cameraDistance` | When enabled, checks `cameraDistanceMaxZoomFactor` on each login and restores `2.6` on Retail or `3.4` on Forever, selected via `addon.isForever`; enabling applies immediately, disabling leaves the CVar untouched |
 | Spell Queue Window | `CVarSettings.lua` | `spellQueueWindow` | Never writes a value until explicitly enabled; first activation captures the current queue window, and later logins restore that captured or subsequently user-selected value |
 | Edit Mode Nudge | `EditModeNudge.lua` | `editModeNudge` | Provider-split arrow buttons + coordinate display: `enabled` covers native Edit Mode/LibEditMode; `ellesmereEnabled` covers EllesmereUI Unlock Mode and is disabled by default |
 | Buff Health Color | `BuffHealthColor.lua` | `buffHealthColor` | ElvUI health bar recoloring through 12.1 secure Aura Slots for configured player-cast buffs such as Atonement, Lifebloom, Prayer of Mending, Riptide, Beacon of the Savior, Renewing Mist, and custom spell IDs. Aura presence and slot visibility stay engine-managed; each profile retains frame, color, and specialization filters. EllesmereUI Raid Frames already provides equivalent Health Bar Color indicators in its Buff Manager, so MathWroQOL does not duplicate that runtime |
 | Combat Tracker | `CombatTracker.lua` + 3 section files | `combatTracker` | Cooldown icon display system (racials, trinkets, consumables); trinkets honor the configured `frames.trinkets.excludedItems` set |
 | External Tracker | `ExternalTracker.lua` | `externalTracker` | Independently opt-in external buffs on the player; secure duration icons, native aura-triggered LibSharedMedia sounds, or both |
-| Bloodlust Tracker | `ExternalTracker.lua` | `bloodlustTracker` | Independent duration icon for Bloodlust variants and drums; shares the External Tracker submenu and runtime implementation |
+| Bloodlust Tracker | `ExternalTracker.lua` | `bloodlustTracker` | Retail-only duration icon for Bloodlust variants and drums; shares the External Tracker submenu and runtime implementation |
 | Folio Equipment Sets | `FolioEquipmentSets.lua` | `folioEquipmentSets` | Opt-in full purchased Folio choice snapshots per character/equipment-set ID; saved stat badges and Apply/Clear actions in native Equipment Manager |
 
 ### Heroic Strike CDM Companion
@@ -137,7 +138,7 @@ With EllesmereUI CDM enabled, use its module namespace's `GetCDMBarFrame("buffs"
 
 Native pooled items, aura state, and provider icon lists are left untouched. Disabling hides the companion and unregisters events; retained hooks and queued callbacks return before feature work. Only the primary Ellesmere Buffs row and native viewer are supported.
 
-`heroicStrike.glowType` defaults to `"none"` and is selected in the CDM Plugins card. Its native glow uses the shared helper on the companion frame, follows rendered width/height, and inherits provider visibility. Proc consumption, leaving Arms, and feature disable stop the animation; a subsequent proc restarts it.
+`heroicStrike.glowType` defaults to `"none"` and is selected in Other Addon Tweaks → Cooldown Manager Tweaks. Its native glow uses the shared helper on the companion frame, follows rendered width/height, and inherits provider visibility. Proc consumption, leaving Arms, and feature disable stop the animation; a subsequent proc restarts it.
 
 ---
 
@@ -225,6 +226,8 @@ The external catalog is selected with `addon.isForever`. Forever groups Protecti
 
 The same file registers `bloodlustTracker` through the private `registerTracker` function. Each registration owns its events, aura container, anchor, preview, sounds, and Edit Mode callbacks. Bloodlust defaults off with separate position/appearance settings; it has no per-spell settings or sound mode. One `HELPFUL` slot accepts the grouped `spellIDs` map, covering class buffs (including Primal Rage's alternate aura), legacy hunter variants, and drums through Void-touched Drums. Use buff IDs, not cast IDs or Exhaustion/Sated debuffs. Blizzard supplies the actual matching buff's icon and duration.
 
+Bloodlust registration stops after the shared External Tracker on Forever; no Bloodlust feature, events, aura container, or Edit Mode controls are exposed there. Config likewise returns before its entire Bloodlust section. Preserve `bloodlustTracker` saved values without applying them on Forever.
+
 - Icons use `CustomAuraContainerTemplate` on `player`, with one `HELPFUL` Aura Slot per selected icon spell. Blizzard owns visibility, duration cooldowns, and duration text. Lua arranges ordinary anchor frames from settings only; each aura button is anchored during initialization and never accessed afterward, because aura secrecy can deny access even outside combat. Lua never reads combat aura data or slot visibility.
 - Sounds use `C_UnitAuras.AddAuraSound(Enum.UnitAuraSoundTrigger.Added, info)` with the selected media's file path or file ID. The tracker-wide `externalTracker.soundChannel` defaults to `"Master"`; Config offers Master, SFX, Music, Ambience, and Dialog and uses the same channel for previews. Keep registrations whose sound and channel are unchanged; replace them when either changes, and remove obsolete registrations on mode changes, spell disable, or master disable. No LibSharedMedia library or missing media means no sound, not a substitute.
 - Native sounds cannot filter by caster, so both outputs include self-cast instances of the listed buffs. This is an incoming buff-duration tracker, not a tracker of other players' cooldown availability.
@@ -246,6 +249,16 @@ The same file registers `bloodlustTracker` through the private `registerTracker`
 - Config's `addon:CreateFolioEquipmentSetControls(host)` reuses the shared dropdown/backdrop/skin helpers to create the equipment-set selector and Save/Apply/Clear footer beneath the native Folio overlay. Runtime hooks the concrete `ExpansionLandingPage` frame's `OnShow` and `RefreshExpansionOverlay`, mounts only an `overlayFrame` with `RunesOfPowerFrame`, and never forces Blizzard UI loading. Reuse the current host's controls, hide them on disable, and use `IsVisible` to avoid gameplay queries when their native parent is hidden.
 - `SaveSet`, `ApplySet`, `ClearSet`, `HasSavedSet`, `GetSummary`, and `GetEquipmentSetOptions` are the management interface. Runtime owns `RefreshControls(message)`, forwarding to the panel's `Refresh(message)`; saved summary and operation status remain separate. Combat entry/exit refreshes lock all management controls. Clearing removes the association only. `EQUIPMENT_SETS_CHANGED` prunes deleted associations while enabled. Disabled runtime unregisters events/hides owned UI; retained hooks, menu actions, and timer callbacks return before gameplay work.
 
+## PallyPower auto-hide
+
+`Features/PallyPower.lua` registers `pallyPower` only on Forever; its default is disabled. Only a Paladin processes provider work. OptionalDeps orders PallyPower first; an enabled ADDON_LOADED listener also handles late providers. Capability checks require the installed port's root frame, assignments accessors, spell-name tables, and blessing-alternative helper.
+
+The feature checks only the local paladin's effective assignments through `GetSpellID(class, name)`; personal assignments override class defaults. `GetBuffAlternatives` receives normal/Greater names for that effective blessing, not the overridden class blessing. Fresh `C_UnitAuras.GetAuraDataBySpellName(unit, name, "HELPFUL")` confirmation avoids the provider's remembered `FindBuff` results. The named API has `RequiresNonSecretAura`, unlike error-producing index queries. Guard global aura restriction state, table access, expiry numbers, unit identity, connectivity, visibility, and death before evaluating. Missing/unknown data, no assignments, and dirty rosters leave the bar visible.
+
+A visibility driver on `PallyPower.Header` (the actual PallyPowerFrame root) uses `[combat] show; hide` only for confirmed blessings with more than 240 seconds left; otherwise it shows. Register/unregister only outside combat. Existing child visibility and all provider preferences remain untouched. A one-shot timer wakes at the four-minute refresh threshold; provider update/layout/roster post-hooks and coalesced unit-aura events refresh state. Roster changes reveal immediately and wait for the provider's completed roster refresh before hiding again. No OnUpdate or combat aura scans. Disabled hooks are inert; combat disable retains only a regeneration listener to release owned visibility safely. A bar already hidden before ownership is not taken over.
+
+API baseline: Forever [1.60.1.70938](https://github.com/Gethe/wow-ui-source/tree/bebcb6bf309cf41b41bd74f8ca651e6a105b2676), UnitAuraDocumentation and SecureStateDriver. The smoke harness covers visibility decisions and lifecycle, not native rendering, secure sibling overlay visibility, or live taint. Validate these in-game.
+
 ## Hearthstone Destination Zone
 
 `hearthstoneZone.enabled` defaults false. `characters[playerGUID]` stores only the current `{ location, zone }` destination per character. Capture both localized strings from `GetBindLocation()` and `GetRealZoneText()` on `HEARTHSTONE_BOUND`, never on login or enable. A bind with missing location/zone data clears the old record rather than retaining a stale destination.
@@ -258,7 +271,7 @@ No inn catalog, tooltip-English parsing, periodic scan, or current-zone guess. P
 
 ## Settings Menus
 
-Every page uses `Settings.RegisterVerticalLayoutCategory` / `Settings.RegisterVerticalLayoutSubcategory` and Blizzard's native list initializers. Flat section headers replace custom cards, collapsible blocks, and nested configuration buttons. Both supported Mainline-family clients provide the required APIs.
+Every page uses `Settings.RegisterVerticalLayoutCategory` / `Settings.RegisterVerticalLayoutSubcategory` and Blizzard's native list initializers. Flat section headers replace custom cards and nested configuration buttons. Other Addon Tweaks uses the native category list's recursive expansion, not a custom collapsible content block. Both supported Mainline-family clients provide the required APIs.
 
 - **Parent** — "MathWro QOL": version, navigation guidance, and Open General action.
   - **General** — Game Menu scale/drag/reset, CDM button and slash commands, Auction House filters, and Retail-only Folio enablement.
@@ -267,9 +280,11 @@ Every page uses `Settings.RegisterVerticalLayoutCategory` / `Settings.RegisterVe
   - **CVars and Settings** — camera distance and opt-in Spell Queue Window enforcement.
   - **Combat Tracker** — Racials, Trinkets, Consumables, Item Display Order, and Masque sections. Native selected-item editor with move/add/remove/reset actions; native dialogs accept custom IDs and trinket exclusions.
   - **External Tracker** — selected-spell enable/mode/sound controls, preview, and independent External/Bloodlust enablement and position resets.
-  - **ElvUI** — shared Vehicle Bar preferences and a selected-buff editor with native color, frame, spec, and custom-ID controls.
-  - **EllesmereUI** — shared Vehicle Bar preferences, native Raid Frames guidance, and independent Unlock Mode Nudge enablement.
-  - **CDM Plugins** — CMC Masque viewers and Retail-only Heroic Strike placement/glow.
+  - **Other Addon Tweaks** — native collapsible group with navigation buttons.
+    - **ElvUI** — shared Vehicle Bar preferences and a selected-buff editor with native color, frame, spec, and custom-ID controls.
+    - **EllesmereUI** — shared Vehicle Bar preferences, native Raid Frames guidance, and independent Unlock Mode Nudge enablement.
+    - **Cooldown Manager Tweaks** — CMC Masque viewers and Retail-only Heroic Strike placement/glow; formerly CDM Plugins.
+    - **PallyPower** — Forever-only category for opt-in assigned-blessing auto-hide; provider-dependent controls remain disabled without a Paladin and PallyPower.
   - **Edit Mode** — native nudge enablement and appearance-control guidance.
   - **Debug** — provider-gated Buff Health Color and Vehicle Bar actions.
 

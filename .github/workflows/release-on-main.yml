@@ -1,0 +1,51 @@
+name: Release version bump on main
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - MathWroQOL.toc
+      - MathWroQOL_Camelot.toc
+
+concurrency:
+  group: release-version-on-main
+  cancel-in-progress: false
+
+jobs:
+  tag-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tag synchronized version and dispatch packaging
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(awk '/^## Version:/ { print $3 }' MathWroQOL.toc)
+          forever_version=$(awk '/^## Version:/ { print $3 }' MathWroQOL_Camelot.toc)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$version" == "$forever_version" ]]
+          tag="v$version"
+          if git rev-parse --verify "refs/tags/$tag" >/dev/null 2>&1; then
+            if [[ "$(git rev-list -n 1 "$tag")" != "$(git rev-parse HEAD)" ]]; then
+              echo "$tag already belongs to an earlier commit; no new version to release."
+              exit 0
+            fi
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git tag -a "$tag" -m "$tag"
+            git push origin "refs/tags/$tag"
+          fi
+          # GITHUB_TOKEN tag pushes do not trigger other push workflows.
+          # Explicit dispatch starts the existing tag-based packager instead.
+          gh workflow run release.yml --ref main -f "tag=$tag"

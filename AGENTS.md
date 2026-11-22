@@ -15,6 +15,18 @@ Before changing addon settings visuals, sliders, textures, navigation, or Edit M
 
 Use Context7 (`npx ctx7@latest library` followed by `npx ctx7@latest docs`) to retrieve current WoW API documentation before making API-dependent changes.
 
+### Local Forever Addons
+
+- Relative to this repository root, Forever's installed addons are at `../../../../_forever_/Interface/AddOns/`.
+- Inspect an installed provider there when researching Forever integrations; for example, PallyPower is at `../../../../_forever_/Interface/AddOns/PallyPower/`.
+
+### Blizzard UI Source
+
+- Upstream exported UI/API source: [Gethe/wow-ui-source](https://github.com/Gethe/wow-ui-source). Context7 library ID: `/gethe/wow-ui-source`; its indexed `live` branch is not proof of Forever behavior.
+- For Forever API-dependent changes, inspect a pinned Forever export. Latest baseline used here: [1.60.1.70938, `bebcb6bf309cf41b41bd74f8ca651e6a105b2676`](https://github.com/Gethe/wow-ui-source/tree/bebcb6bf309cf41b41bd74f8ca651e6a105b2676). Earlier compatibility audit: [1.60.1.70707, `aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16`](https://github.com/Gethe/wow-ui-source/tree/aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16).
+- Raw-file pattern: `https://raw.githubusercontent.com/Gethe/wow-ui-source/<commit>/Interface/AddOns/<path>`. Discover paths from the selected commit's tree; generated API contracts are in `Blizzard_APIDocumentationGenerated/`, native settings in `Blizzard_Settings_Shared/`, and secure visibility drivers in `Blizzard_RestrictedAddOnEnvironment/SecureStateDriver.lua`.
+- Retail audit revisions and feature-specific source links live in `docs/ARCHITECTURE.md`; use the revision matching the target client and record the inspected build/commit when updating a contract.
+
 ---
 
 ## Build / Lint / Test
@@ -63,14 +75,11 @@ Then validate in-game:
 ---
 
 ## Releases
-GitHub Actions only. Use Semantic Versioning: additive features increment MINOR; fixes increment PATCH. Before tagging, set `## Version:` in `MathWroQOL.toc` to `X.Y.Z`. Create and push an annotated tag:
+GitHub Actions only. Use Semantic Versioning: additive features increment MINOR; fixes increment PATCH. Bump `## Version:` in **both** `MathWroQOL.toc` and `MathWroQOL_Camelot.toc` together.
 
-```bash
-git tag -a vX.Y.Z -m "vX.Y.Z"
-git push origin vX.Y.Z
-```
+Merging a manifest version bump into `main` triggers `.github/workflows/release-on-main.yml`: validate matching versions, create/push annotated `vX.Y.Z` at the merged commit, and explicitly dispatch `.github/workflows/release.yml` → `BigWigsMods/packager@v2`. The dispatch is required because tags pushed with `GITHUB_TOKEN` do not trigger another push workflow. Existing versions on earlier commits are skipped; rerunning the same merged commit can redispatch packaging.
 
-Triggers `.github/workflows/release.yml` → `BigWigsMods/packager@v2`.
+Manual releases remain available by creating/pushing an annotated tag, or dispatching `release.yml` with its `tag` input. Keep release tags on merged `main` commits.
 
 Do **not** use comma-separated `## Interface:` values in the TOC — the packager will produce a broken `release.json`.
 

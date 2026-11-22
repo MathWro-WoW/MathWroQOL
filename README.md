@@ -20,10 +20,12 @@ Forever uses the modern Mainline UI/API family, including Midnight's secret-valu
 | Combat Tracker: trinkets | Shared | Discovers equipped on-use items dynamically. |
 | Combat Tracker: racials | Client-specific | Forever uses its own active-racial catalog, including Human, Night Elf, Troll, Gnome, and Skyborne abilities; only spells the character knows are shown. |
 | Combat Tracker: consumables | Client-specific | Forever has its own potion and Healthstone item families; item-use spell IDs come from the client. Midnight retains its own potion/fleeting catalog. Optional food and water icons select usable items from character bags on either client. |
-| External and Bloodlust trackers | Client/data-dependent | Forever's externals use Protection and Sacrifice rank families, Freedom, Power Infusion, Fear Ward, and Innervate. Midnight retains its own external catalog. Bloodlust still matches the existing cataloged buff IDs; no Forever-specific replacement is assumed. |
+| External Tracker | Client/data-dependent | Forever's externals use Protection and Sacrifice rank families, Freedom, Power Infusion, Fear Ward, and Innervate. Midnight retains its own external catalog. |
+| Bloodlust Tracker | Retail only | The entire settings section, runtime, and Edit Mode preview are omitted on Forever; saved preferences are retained. |
 | Vehicle Bar visibility | Provider-dependent | Requires compatible ElvUI or EllesmereUI Action Bars and a relevant vehicle/override state. |
 | Buff Health Color | Provider/data-dependent | Requires compatible ElvUI and matching spell IDs. Built-ins use Retail healer data; custom profiles can use Forever spell IDs. Retail specialization filters are unavailable when the client's deprecated specialization globals are absent; use all-spec custom profiles. Ellesmere Raid Frames provides its own indicators. |
 | CMC Masque skinning | Provider-dependent | Requires compatible CooldownManagerCentered and Masque plus populated Blizzard viewers. |
+| PallyPower auto-hide | Forever only, provider-dependent | Paladins with PallyPower Forever; checks your assigned blessings outside combat. Restricted/unknown state leaves the bar visible. |
 | Arms Heroic Strike proc companion | Retail only | Tracks Midnight's temporary Arms spell, not Forever's Heroic Strike. Runtime is not registered and the entire settings card is omitted on Forever. |
 | Folio Equipment Sets | Retail only | Omnium Folio system/tree IDs are Retail-specific. Runtime is not registered and the entire settings section is omitted on Forever, even if saved settings enable it. Saved preferences are preserved. |
 
@@ -31,7 +33,7 @@ Provider integrations remain inactive when their provider is unavailable. Their 
 
 **Install:** extract the same `MathWroQOL` folder into each client's `Interface/AddOns` directory (`_retail_` and `_forever_`). Leave both TOCs in the folder. Each client's WTF directory keeps its own settings; this addon does not copy Retail settings into Forever.
 
-**Launch validation:** load Forever, open `/mqol`, confirm Folio Equipment Sets is absent from General and Heroic Strike is absent from CDM Plugins, then exercise shared features with that character's actual items/spells and optional providers. Confirm both sections remain available on Midnight. Test cooldowns and aura icons in combat, menu positioning, Edit Mode dragging, `/reload`, and a full logout/relaunch for saved settings. Check `!BugGrabber`/BugSack for errors. Early beta builds had community-reported SavedVariables loading failures; persistence on the launch client still needs an in-game check. No macro/CVar persistence workaround is included.
+**Launch validation:** load Forever, open `/mqol`, confirm Folio Equipment Sets is absent from General and Heroic Strike is absent from Other Addon Tweaks → Cooldown Manager Tweaks, then exercise shared features with that character's actual items/spells and optional providers. Confirm both sections remain available on Midnight. Test cooldowns and aura icons in combat, menu positioning, Edit Mode dragging, `/reload`, and a full logout/relaunch for saved settings. Check `!BugGrabber`/BugSack for errors. Early beta builds had community-reported SavedVariables loading failures; persistence on the launch client still needs an in-game check. No macro/CVar persistence workaround is included.
 
 **Developer checks:** run `lua tests/ClientFeatures_smoke.lua`, `lua tests/ForeverCatalogs_smoke.lua`, `lua tests/CombatTracker_MainlineNamespaces_smoke.lua`, `lua tests/CombatTracker_Consumables_food_water_smoke.lua`, and `lua tests/CombatTracker_EditMode_smoke.lua` alongside the feature smoke suite in `AGENTS.md`, then `luac -p Core.lua Config.lua Config/*.lua Features/*.lua tests/*.lua`. The Config smoke tests cover native-menu saved values, provider/combat guards, profile defaults, item ordering, and late sound media. These harnesses do not certify Blizzard's live UI rendering or third-party provider compatibility.
 
@@ -47,6 +49,8 @@ Forever food examples: [Spiced Wolf Meat](https://questing.wiki/wow-forever/item
 Buffs, external spells, and consumable items use a selected-entry editor with their controls on the same page. **Add custom ID**, **Add**, and **Edit Exclusions** open standard input dialogs. Native Defaults uses the normal setters and respects disabled dependencies and combat locks; selecting an editor entry does not reset it. Spell Queue Window keeps its captured/user-selected value.
 
 Tracker position and appearance stay in Blizzard Edit Mode. Layout, merge, growth, tracking choices, and filters stay in `/mqol`. Folio management stays attached to Omnium Folio.
+
+**Other Addon Tweaks** is a native collapsible navigation group containing **ElvUI**, **EllesmereUI**, **Cooldown Manager Tweaks** (formerly CDM Plugins), and, on Forever only, **PallyPower**. Client-exclusive options are omitted entirely on the other client: Bloodlust, Heroic Strike, and Folio are Retail-only; PallyPower is Forever-only. Existing preferences are preserved. Expand the group's arrow in the left-hand category list, or use its Open buttons.
 
 After `/reload`, check every category at your UI scale: slider arrows/dragging, long dropdowns, color selection, input dialogs, unavailable providers, Defaults, and combat locks. Native rendering and taint still require this in-game check.
 
@@ -150,7 +154,7 @@ Blizzard's secure Aura Slots manage icon visibility and remaining duration; nati
 
 **Edit Mode appearance:** enable the tracker, open Blizzard Edit Mode, then select **External Tracker** to open its settings panel. Adjust **Icon size** (20–80px), **Show duration text**, **Duration text size** (8–40px), **Icon zoom** (0–30% cropped per edge), and **Glow type** (None, Classic, Modern Proc, or Assisted Combat). These settings apply to all tracked icons. A Power Infusion example with sample duration text previews changes even when no spells are enabled; it disappears on exit and never triggers a sound. Text defaults to visible at 18px; glow defaults to None. Size and visibility changes apply to existing icons without changing Blizzard's duration binding. Settings cannot be changed in combat. Enable/spell/sound options and Reset Position remain in `/mqol`.
 
-### Bloodlust Tracker *(disabled by default)*
+### Bloodlust Tracker *(Retail only; disabled by default)*
 
 In `/mqol` → **External Tracker**, enable **Bloodlust Tracker** for a separate duration icon. It works whether the external tracker is enabled or disabled. Bloodlust, Heroism, Time Warp, Fury of the Aspects, Primal Rage (including its alternate aura), legacy hunter equivalents, and drums through Void-touched Drums are recognized automatically. The icon shows the active buff and its remaining duration, not the Exhaustion/Sated lockout.
 
@@ -177,13 +181,13 @@ Recolor selected ElvUI unit frame health bars while units have configured player
 **Buff Health Color — EllesmereUI**
 EllesmereUI Raid Frames already provides this functionality natively. In its Buff Manager, create an indicator and select **Health Bar Color** to configure spell assignment, ownership, color, and opacity. MathWroQOL deliberately does not install a second competing recolor runtime.
 
-### CDM Plugins
+### Cooldown Manager Tweaks
 
 **Centered Cooldown Manager Masque Skinning** *(requires CooldownManagerCentered and Masque)*
 Registers CooldownManagerCentered's icon viewers with Masque so their icons can use the same skins as the rest of the UI. The Essential, Utility, and Buff Icons viewers can be enabled independently in the options panel. When enabled, three groups appear in Masque under MathWroQOL: CMC Essential, CMC Utility, and CMC Buff Icons.
 
 **Heroic Strike Proc Icon** *(disabled by default; Arms Warrior only)*
-Enable **Heroic Strike proc icon** in `/mqol` → **CDM Plugins**. The icon appears while Heroic Strike is temporarily available and disappears when consumed.
+Enable **Heroic Strike proc icon** in `/mqol` → **Other Addon Tweaks** → **Cooldown Manager Tweaks**. The icon appears while Heroic Strike is temporarily available and disappears when consumed.
 Choose **Glow** below the toggle: **None** (default), **Classic**, **Modern Proc**, or **Assisted Combat**. These built-in effects follow the icon's displayed dimensions and appear only while the proc icon is visible, with either supported CDM provider.
 Choose **Placement** to put the companion on the **Right** (default) or **Left**. For vertical Ellesmere rows, Right retains the growth-end placement and Left uses the opposite end.
 
@@ -192,6 +196,14 @@ With **EllesmereUI CDM** enabled, it docks at the selected edge of the primary *
 Without EllesmereUI CDM, it sits just outside the selected side of Blizzard's **Buff Icons** viewer and follows that viewer's position, visibility, and native icon scale; keep Blizzard's Cooldown Manager enabled. Other replacements are not independently integrated. This remains a docked companion, not a sortable entry, with no countdown or Masque dependency.
 
 After `/reload`, check repeated procs in combat, a row with no other buffs, and live Ellesmere icon-size/crop/border changes. The companion should remain adjacent with matching dimensions and appearance, and disappear when consumed or its row is hidden.
+
+### PallyPower
+
+In `/mqol` → **Other Addon Tweaks** → **PallyPower**, enable **Hide when assigned blessings are satisfied** (off by default). Requires a Paladin on Forever with PallyPower Forever installed. The buff bar hides outside combat only when every member with one of your assigned blessings has that blessing, an accepted Greater rank, or PallyPower's accepted substitute. Individual assignments override class assignments. The bar reappears when a blessing has four minutes or less left, is missing, or cannot be confirmed. Dead, disconnected, unseen, or stale roster entries keep it visible; no assignments also leave it visible.
+
+A preconfigured secure visibility driver restores access to PallyPower's enabled buttons in combat, without scanning secret auras or changing protected visibility from addon Lua. After combat, readable state is checked again. Other paladins' assignments, non-blessing buffs, Righteous Fury, seals, and aura selections are not checked. PallyPower's assignments, casting behavior, solo/party preferences, minimap icon, and assignment window are unchanged. Missing/incompatible providers perform no buff checks; disabling releases only this feature's visibility control.
+
+Run `lua tests/PallyPower_smoke.lua` and `lua tests/Config_AddonTweaks_smoke.lua`. In-game, `/reload`, expand/collapse the group, confirm saved integration preferences, enable auto-hide, finish blessings, remove one, and verify the bar returns. Check personal overrides, the four-minute wakeup, roster changes/death/resurrection, restricted/PvP state, entering combat while hidden, combat `/reload`, and disable/re-enable. Native rendering, secure sibling aura overlays, taint, and live Forever provider behavior remain in-game validation requirements.
 
 ### Debug
 

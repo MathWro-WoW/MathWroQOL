@@ -4,7 +4,6 @@ local UI = addon.SettingsUI
 function UI.BuildExternalTracker(parent)
     local page = UI.Page(parent, "External Tracker")
     local db = addon.db.externalTracker
-    local bloodlust = addon.db.bloodlustTracker
     local catalog = addon.externalTracker.spells
     local selected = catalog[1] and catalog[1].spellID or 0
     local empty = { enabled = false, mode = "icon", sound = "None" }
@@ -104,6 +103,8 @@ function UI.BuildExternalTracker(parent)
         db.point, db.x, db.y = "CENTER", 0, 150
         addon:NotifyFeature("externalTracker")
     end, { enabled = active, guard = active, watch = watch, events = events })
+    if addon.isForever then return page end
+    local bloodlust = addon.db.bloodlustTracker
 
     UI.Header(page, "Bloodlust Tracker")
     UI.Text(page, "An independent duration icon for Bloodlust variants and drums. Works with External Tracker disabled. Its position, appearance, and preview are separate in Blizzard Edit Mode.")
