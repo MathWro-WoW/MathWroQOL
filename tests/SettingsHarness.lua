@@ -142,10 +142,13 @@ function H.load(interfaceVersion, module)
                 self.displayedValue = value
                 changed(id)
             end
+            function setting:GetDefaultValueDerived()
+                if type(default) == "function" then return default() end
+                return default
+            end
             function setting:SetValueToDefault()
-                if default == nil then return end
-                local value = default
-                if type(value) == "function" then value = value() end
+                local value = self:GetDefaultValueDerived()
+                if value == nil then return end
                 self:SetValue(value)
             end
             function setting:NotifyUpdate() self.displayedValue = get(); changed(id) end
