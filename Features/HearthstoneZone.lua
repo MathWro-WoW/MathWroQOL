@@ -7,6 +7,18 @@ local HEARTHSTONE_ITEM_ID = 6948
 local eventFrame
 local hooked = false
 
+local function getBindZone()
+    local mapID = C_Map.GetBestMapForUnit("player")
+    while mapID and mapID ~= 0 do
+        local info = C_Map.GetMapInfo(mapID)
+        if not info or info.mapType < Enum.UIMapType.Zone then break end
+        -- Interiors can report the inn or keep as their real-zone text.
+        if info.mapType == Enum.UIMapType.Zone then return info.name end
+        mapID = info.parentMapID
+    end
+    return GetRealZoneText()
+end
+
 local function captureBind()
     local db = addon.db and addon.db.hearthstoneZone
     if not db or not db.enabled then return end
@@ -14,7 +26,7 @@ local function captureBind()
     local guid = UnitGUID("player")
     if not guid then return end
     local location = GetBindLocation()
-    local zone = GetRealZoneText()
+    local zone = getBindZone()
     -- A successful bind replaces the destination even if its zone is unavailable.
     db.characters[guid] = nil
     if not location or location == "" or not zone or zone == "" then return end
