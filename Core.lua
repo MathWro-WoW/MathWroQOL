@@ -8,6 +8,9 @@ local interfaceVersion = select(4, GetBuildInfo())
 addon.isForever = interfaceVersion >= 16000 and interfaceVersion < 17000
 
 local defaults = {
+    taintDiagnostics = {
+        enabled = false,
+    },
     vehicleBar = {
         enabled = false,
         bars = { [1] = true },

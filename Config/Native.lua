@@ -55,7 +55,12 @@ end
 
 local function proxy(page, id, label, default, valueType, get, set, config)
     local name = variable(id)
-    local setting = Settings.RegisterProxySetting(page.category, name, valueType, label, default, get, function(value)
+    local dynamicDefault = type(default) == "function" and default or nil
+    local registrationDefault = default
+    if dynamicDefault then registrationDefault = dynamicDefault() end
+    -- Native argument validation calls function defaults without isolation.
+    -- Resolve metadata here so shared registry insertion stays in native code.
+    local setting = Settings.RegisterProxySetting(page.category, name, valueType, label, registrationDefault, get, function(value)
         if config and config.guard and not config.guard() then
             -- A rejected Defaults/direct write still emits the proposed value.
             C_Timer.After(0, function() Settings.NotifyUpdate(name) end)
@@ -64,6 +69,11 @@ local function proxy(page, id, label, default, valueType, get, set, config)
         set(value)
         if config and config.refresh then UI.Refresh(page) end
     end)
+    if dynamicDefault then
+        -- Only this addon's setting instance changes, never a shared mixin.
+        -- Native Defaults invokes SetValueToDefault through securecallfunction.
+        setting.GetDefaultValueDerived = dynamicDefault
+    end
     return setting
 end
 

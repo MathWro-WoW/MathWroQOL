@@ -36,9 +36,9 @@ Loaded before `Core.lua`:
 Defined in `MathWroQOL.toc`:
 
 1. Vendored LibStub, then LibEditMode and its pools/widgets.
-2. `Core.lua`: framework, defaults, and login event handler.
+2. `Core.lua`: framework, defaults, and login event handler; then `Features/TaintDiagnostics.lua`, registered first so an enabled capture starts before other feature initializers.
 3. `Config\Native.lua`, `Config\Widgets.xml`, and the page builders in `Config\Simple.lua`, `Config\CombatTracker.lua`, `Config\ExternalTracker.lua`, and `Config\Integrations.lua`; then `Config.lua` for category assembly and the attached Folio controls.
-4. Feature modules in manifest order. `CombatTracker.lua` precedes its section and food/water modules.
+4. Remaining feature modules in manifest order. `CombatTracker.lua` precedes its section and food/water modules.
 
 Core's `PLAYER_LOGIN` handler initializes features before Config's handler builds categories. This makes initialized racial catalogs available without adding settings-driven gameplay scans. Keep the two TOCs authoritative for the exact file sequence.
 
@@ -311,11 +311,14 @@ Control configuration:
 - Getters and registration are read-only. Setters own DB writes and `NotifyFeature`; editor-only selection does not apply gameplay features. An absent spell entry stays absent until an actual edit.
 - A rejected proxy write defers `Settings.NotifyUpdate` until after native notification, restoring the saved displayed value. Provider and combat checks belong in guards, not only disabled visuals.
 - Defaults uses these same setters and guards. Transient spell/item/profile selectors have no default. Selected-buff defaults resolve against that profile; Spell Queue Window has no invented default value.
+- Callable profile defaults must be resolved to scalar metadata before `Settings.RegisterProxySetting`. Native `ProxySettingMixin:Init` directly invokes callable defaults during type validation, before shared registry insertion, without a secure-call boundary. `Config/Native.lua` installs the dynamic `GetDefaultValueDerived` only on that addon's already-registered setting instance; no shared Blizzard mixin or registry entry is rewritten. Native Defaults isolates each `SetValueToDefault` call, so selected-profile resets remain dynamic without exposing startup validation to addon callbacks.
 - Native colors use opaque ARGB strings at the Settings boundary; saved colors remain `{ r, g, b }`.
 - Dropdown options are fresh functions, with `customOptionHandler` enabling native scrolling. Never regenerate or retain a pooled native dropdown while its menu is open.
 - `Config/Widgets.xml` defines the standalone note row with its own prefixed mixin. Do not modify Blizzard mixins or manually skin native list rows.
 
 The remaining local backdrop/dropdown helpers in `Config.lua` serve only `addon:CreateFolioEquipmentSetControls(host)`. Its dropdown closes before regeneration to release live scroll rows. The removed canvas/card/collapsible settings helpers are not an alternate UI convention.
+
+This registration boundary was inspected in Forever **1.60.1.71037**, commit [`734f065329cff4992835b01a84f210a297db91b6`](https://github.com/Gethe/wow-ui-source/tree/734f065329cff4992835b01a84f210a297db91b6): [ProxySetting validation](https://github.com/Gethe/wow-ui-source/blob/734f065329cff4992835b01a84f210a297db91b6/Interface/AddOns/Blizzard_Settings_Shared/Blizzard_Setting.lua), [secure mixin copies and initialization](https://github.com/Gethe/wow-ui-source/blob/734f065329cff4992835b01a84f210a297db91b6/Interface/AddOns/Blizzard_SharedXMLBase/Mixin.lua), and [per-setting Defaults isolation](https://github.com/Gethe/wow-ui-source/blob/734f065329cff4992835b01a84f210a297db91b6/Interface/AddOns/Blizzard_Settings_Shared/Blizzard_SettingsPanel.lua). `tests/Config_Taint_smoke.lua` models the unisolated validation call and verifies callback-free native registration plus dynamic boolean/color resets. Two retained post-fix live captures remained clean through the monitored startup refresh and recorded zero blocked actions after the user's test. The harness does not emulate engine taint propagation. See the [1.24.2 incident reference](ACTION_BAR_TAINT.md) for evidence, inference limits, prevention rules, and the recurrence checklist.
 
 ### Settings Verification
 
@@ -410,6 +413,22 @@ General event rules:
 - Use a dedicated local frame per feature, not an existing frame handling unrelated events
 - Unregister events when a feature is disabled: call `frame:UnregisterAllEvents()` in `Apply()` when `enabled == false`, re-register when re-enabled
 - `SPELL_UPDATE_COOLDOWN` and `BAG_UPDATE_COOLDOWN` are safe to handle synchronously — they fire at sensible rates and per-spell/item queries are cheap
+
+---
+
+## Opt-in taint diagnostics
+
+`Features/TaintDiagnostics.lua` owns `/mqoltaint on`, `off`, and status (no argument). `taintDiagnostics.enabled` defaults false. Disabled startup creates no event frame, hooks, snapshots, or stacks. Enabling starts a capture immediately; `/reload` is required to observe startup from a clean UI. Current and previous enabled sessions are retained under `MathWroQOLDB.taintDiagnostics`; re-enabling within a session does not rotate evidence.
+
+Only secure post-hooks on the concrete `MainActionBar:SetSnappedToFrame` and `UpdateSpellFlyoutDirection` observe the reported `snappedToFrame` and `flyoutDirection` fields. Each checks ownership through `issecurevariable` until MathWroQOL is observed, records once, then stops querying that field. Already-tainted startup state is labelled explicitly and has no invented originating stack. A post-hook stack identifies the first observed matching method call, not necessarily the first writer when another path contaminated the field earlier. Retained hooks return immediately while disabled.
+
+The first matching `ADDON_ACTION_BLOCKED` or `ADDON_ACTION_FORBIDDEN` stores its protected-function name, stack, combat flag, elapsed time, and a fixed-size field-ownership snapshot (plus the named affected frame, if available). Further matching failures increment a counter only. Each session retains at most two probe records, one first-cache-call record, and one blocked-action record, with each stack capped at 8192 bytes. Build/version and relevant feature-enable flags accompany the clean/tainted baseline. No native fields, scripts, attributes, or frame geometry are changed; no action/aura values, frame enumeration, timers, OnUpdate, global API replacements, or CVar changes are used.
+
+Startup snapshots and first observations also inspect field ownership on the native `PROXY_SHOW_ACTIONBAR_2` through `_8` setting objects, `SettingsPanel`, and `MultiBarBottomLeft`. Read-only `Settings.GetSetting` lookups do not invoke setting value getters. Secure post-hooks on `MultiActionBar_GetBarForPage`, `MultiActionBar_Update`, `MultiActionBar_ShowAllGrids`, and `MultiActionBar_HideAllGrids` retain only the first public cache-entry caller and its input snapshot. This is the first observed public entry after capture starts, not proof of when Blizzard's private lazy cache was initialized.
+
+Each checkpoint's `metadata` contains only MathWroQOL-tainted string-key fields on a fixed list of native action bars, the Micro Menu container, layout/preset managers, and input utilities; plus explicit active-layout, main-system, preset-anchor, and layout-global ownership. Each object's walk stops at 512 string fields and marks `truncated` if more remain. This inspects UI configuration metadata only, does not enumerate the frame registry or recurse, and never saves live gameplay values. An empty result does not certify unmonitored state.
+
+The investigation and post-fix live results are recorded in [Action-bar taint incident — 1.24.2](ACTION_BAR_TAINT.md). The matching Forever source export is commit [`734f065329cff4992835b01a84f210a297db91b6`](https://github.com/Gethe/wow-ui-source/tree/734f065329cff4992835b01a84f210a297db91b6): [MultiActionBars.lua](https://github.com/Gethe/wow-ui-source/blob/734f065329cff4992835b01a84f210a297db91b6/Interface/AddOns/Blizzard_ActionBar/Shared/MultiActionBars.lua), [settings lookup](https://github.com/Gethe/wow-ui-source/blob/734f065329cff4992835b01a84f210a297db91b6/Interface/AddOns/Blizzard_Settings_Shared/Blizzard_SettingsPanel.lua), and [secure settings registration](https://github.com/Gethe/wow-ui-source/blob/734f065329cff4992835b01a84f210a297db91b6/Interface/AddOns/Blizzard_Settings_Shared/Blizzard_SettingsInbound.lua). The original snap/flyout write paths were inspected in the earlier Forever `1.60.1.70938` export, commit `bebcb6bf309cf41b41bd74f8ca651e6a105b2676`. API references: [issecurevariable](https://warcraft.wiki.gg/wiki/API:issecurevariable), [debugstack](https://warcraft.wiki.gg/wiki/API:debugstack), and [secure post-hooks](https://warcraft.wiki.gg/wiki/Secure_Execution_and_Tainting#Securely_post-hooking). A clean capture supports the tested path; it does not establish universal absence of taint.
 
 ---
 

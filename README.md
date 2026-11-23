@@ -12,6 +12,7 @@ Quality-of-life tweaks for WoW Retail and WoW Forever. Configure features with `
 - **Camera distance:** optionally restore the client's maximum camera zoom.
 - **Spell Queue Window:** capture and preserve your preferred queue window.
 - **Edit Mode nudge:** position frames precisely with arrow buttons and a coordinate readout.
+- **Taint diagnostics:** optional bounded troubleshooting captures through `/mqoltaint`; disabled by default. See the [action-bar taint reference](docs/ACTION_BAR_TAINT.md).
 
 ## Trackers
 
