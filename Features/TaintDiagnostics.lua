@@ -5,6 +5,10 @@ addon:RegisterFeature(Diagnostics)
 local SETTING_FIELDS = { "variable", "GetVariable", "GetValue", "GetValueDerived", "getValue", "pendingValue" }
 local CACHE_ENTRIES = { "MultiActionBar_GetBarForPage", "MultiActionBar_Update",
     "MultiActionBar_ShowAllGrids", "MultiActionBar_HideAllGrids" }
+local METADATA_OBJECTS = { "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MicroMenuContainer",
+    "EditModeManagerFrame", "EditModePresetLayoutManager", "EditModeUtil", "InputUtil", "C_InputInterfaceStyle" }
+local LAYOUT_GLOBALS = { "CopyTable", "ACTION_BARS_RELATIVE_TO_BASE_POSITIONING",
+    "MAIN_ACTION_BAR_OFFSET_X", "MAIN_ACTION_BAR_OFFSET_Y", "BOTTOM_ACTION_BARS_SPACER_Y" }
 local ACTION_FIELDS = { "action", "popupDirection", "feedback_action", "UpdateAction", "OnEvent" }
 local WATCHED = {
     ActionButton7 = ACTION_FIELDS,
@@ -29,9 +33,53 @@ local function stack()
     return debugstack(3, 20, 10):sub(1, 8192)
 end
 
+-- Fixed native UI objects only; no frame enumeration, recursive traversal, or
+-- gameplay values. Retain only our tainted string-key fields and cap each walk.
+local function metadataSnapshot()
+    local result = {}
+    local function inspect(name, object)
+        if type(object) ~= "table" then result[name] = { unavailable = true }; return end
+        local record = { fields = {}, scanned = 0 }
+        for key in pairs(object) do
+            if type(key) == "string" then
+                if record.scanned == 512 then record.truncated = true; break end
+                record.scanned = record.scanned + 1
+                local _, owner = issecurevariable(object, key)
+                if owner == addonName then record.fields[key] = owner end
+            end
+        end
+        result[name] = record
+    end
+    for _, name in ipairs(METADATA_OBJECTS) do inspect(name, _G[name]) end
+    local manager = EditModeManagerFrame
+    local layout = manager and manager.layoutInfo
+    inspect("EditModeManagerFrame.layoutInfo", layout)
+    if type(layout) == "table" and type(layout.layouts) == "table" then
+        inspect("activeLayout", layout.layouts[layout.activeLayout])
+    end
+    local bar = MainActionBar
+    inspect("MainActionBar.systemInfo", bar and bar.systemInfo)
+    if bar then
+        for _, name in ipairs({ "EDIT_MODE_MODERN_SYSTEM_MAP", "EDIT_MODE_CLASSIC_SYSTEM_MAP" }) do
+            local map = _G[name]
+            local system = type(map) == "table" and map[bar.system] or nil
+            if type(system) == "table" and bar.systemIndex then system = system[bar.systemIndex] end
+            inspect(name .. ".MainActionBar", system)
+            inspect(name .. ".MainActionBar.anchorInfo", type(system) == "table" and system.anchorInfo or nil)
+        end
+    end
+    result.globals = {}
+    for _, name in ipairs(LAYOUT_GLOBALS) do
+        local secure, owner = issecurevariable(_G, name)
+        result.globals[name] = secure and "secure-or-unset" or owner or "unknown"
+    end
+    return result
+end
+
 -- Inspect ownership only: never read live action/aura values or change native fields.
 local function snapshot(extraName)
     local result = {}
+    result.metadata = metadataSnapshot()
     local function inspectFrame(frame, fields)
         if not frame then return { unavailable = true } end
         local owners = {}

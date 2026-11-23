@@ -90,6 +90,8 @@ assert(current.firstBarCacheCall == cacheCall and H.stackCalls == cacheStacks,
     "cache tracing must stop building stacks after the first call")
 assert(not current.probes.snappedToFrame, "another addon's state must not be blamed on MathWroQOL")
 H.owner(env.MainActionBar, "snappedToFrame", "MathWroQOL")
+env.MainActionBar.customGamepadModeVisibilityHandling = true
+H.owner(env.MainActionBar, "customGamepadModeVisibilityHandling", "MathWroQOL")
 env.MainActionBar:SetSnappedToFrame("new anchor")
 assert(env.MainActionBar.anchor == "new anchor", "diagnostics must leave native placement working")
 assert(current.probes.snappedToFrame.stack == "producer.lua:42: native positioning caller", "first observation must retain its caller stack")
@@ -101,6 +103,9 @@ assert(current.probes.snappedToFrame == first and H.stackCalls == calls and H.re
     "repeated layout calls must stop collecting data after the first matching observation")
 assert(current.probes.snappedToFrame.frames.PROXY_SHOW_ACTIONBAR_2.GetValueDerived == "MathWroQOL",
     "first producer observation must include the native settings input ownership at that moment")
+assert(current.probes.snappedToFrame.frames.metadata and
+    current.probes.snappedToFrame.frames.metadata.MainActionBar.fields.customGamepadModeVisibilityHandling == "MathWroQOL",
+    "producer snapshot must expose tainted native layout inputs beyond the original watched fields")
 H.stack = string.rep("x", 100000)
 H.owner(env.MainActionBar, "flyoutDirection", "MathWroQOL")
 env.MainActionBar:UpdateSpellFlyoutDirection("DOWN")
@@ -134,4 +139,10 @@ H.owner(H.env.MainActionBar, "flyoutDirection", "MathWroQOL")
 H.command("on")
 assert(H.db.current.probes.flyoutDirection.observation == "already-tainted" and
     not H.db.current.probes.flyoutDirection.stack, "starting after contamination must not invent an originating stack")
+local limited = runtime()
+for index = 1, 600 do limited.env.MainActionBar["layoutField" .. index] = true end
+limited.command("on")
+local metadata = limited.db.current.initial.metadata.MainActionBar
+assert(metadata.scanned <= 512 and metadata.truncated,
+    "unexpectedly large native objects must stop metadata inspection at the documented limit")
 print("Taint diagnostics bounded capture smoke: PASS")
