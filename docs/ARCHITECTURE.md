@@ -36,9 +36,9 @@ Loaded before `Core.lua`:
 Defined in `MathWroQOL.toc`:
 
 1. Vendored LibStub, then LibEditMode and its pools/widgets.
-2. `Core.lua`: framework, defaults, and login event handler.
+2. `Core.lua`: framework, defaults, and login event handler; then `Features/TaintDiagnostics.lua`, registered first so an enabled capture starts before other feature initializers.
 3. `Config\Native.lua`, `Config\Widgets.xml`, and the page builders in `Config\Simple.lua`, `Config\CombatTracker.lua`, `Config\ExternalTracker.lua`, and `Config\Integrations.lua`; then `Config.lua` for category assembly and the attached Folio controls.
-4. Feature modules in manifest order. `CombatTracker.lua` precedes its section and food/water modules.
+4. Remaining feature modules in manifest order. `CombatTracker.lua` precedes its section and food/water modules.
 
 Core's `PLAYER_LOGIN` handler initializes features before Config's handler builds categories. This makes initialized racial catalogs available without adding settings-driven gameplay scans. Keep the two TOCs authoritative for the exact file sequence.
 
@@ -410,6 +410,18 @@ General event rules:
 - Use a dedicated local frame per feature, not an existing frame handling unrelated events
 - Unregister events when a feature is disabled: call `frame:UnregisterAllEvents()` in `Apply()` when `enabled == false`, re-register when re-enabled
 - `SPELL_UPDATE_COOLDOWN` and `BAG_UPDATE_COOLDOWN` are safe to handle synchronously — they fire at sensible rates and per-spell/item queries are cheap
+
+---
+
+## Opt-in taint diagnostics
+
+`Features/TaintDiagnostics.lua` owns `/mqoltaint on`, `off`, and status (no argument). `taintDiagnostics.enabled` defaults false. Disabled startup creates no event frame, hooks, snapshots, or stacks. Enabling starts a capture immediately; `/reload` is required to observe startup from a clean UI. Current and previous enabled sessions are retained under `MathWroQOLDB.taintDiagnostics`; re-enabling within a session does not rotate evidence.
+
+Only secure post-hooks on the concrete `MainActionBar:SetSnappedToFrame` and `UpdateSpellFlyoutDirection` observe the reported `snappedToFrame` and `flyoutDirection` fields. Each checks ownership through `issecurevariable` until MathWroQOL is observed, records once, then stops querying that field. Already-tainted startup state is labelled explicitly and has no invented originating stack. A post-hook stack identifies the first observed matching method call, not necessarily the first writer when another path contaminated the field earlier. Retained hooks return immediately while disabled.
+
+The first matching `ADDON_ACTION_BLOCKED` or `ADDON_ACTION_FORBIDDEN` stores its protected-function name, stack, combat flag, elapsed time, and a fixed-size field-ownership snapshot (plus the named affected frame, if available). Further matching failures increment a counter only. Each session retains at most two probe records and one blocked-action record, with each stack capped at 8192 bytes. Build/version and relevant feature-enable flags accompany the clean/tainted baseline. No native fields, scripts, attributes, or frame geometry are changed; no action/aura values, frame enumeration, timers, OnUpdate, global API replacements, or CVar changes are used.
+
+Inspected native write paths: Forever **1.60.1.70938**, commit [`bebcb6bf309cf41b41bd74f8ca651e6a105b2676`](https://github.com/Gethe/wow-ui-source/tree/bebcb6bf309cf41b41bd74f8ca651e6a105b2676), [EditModeSystemTemplates.lua](https://github.com/Gethe/wow-ui-source/blob/bebcb6bf309cf41b41bd74f8ca651e6a105b2676/Interface/AddOns/Blizzard_EditMode/Shared/EditModeSystemTemplates.lua) and [ActionBar.lua](https://github.com/Gethe/wow-ui-source/blob/bebcb6bf309cf41b41bd74f8ca651e6a105b2676/Interface/AddOns/Blizzard_ActionBar/Shared/ActionBar.lua). API references: [issecurevariable](https://warcraft.wiki.gg/wiki/API:issecurevariable), [debugstack](https://warcraft.wiki.gg/wiki/API:debugstack), and [secure post-hooks](https://warcraft.wiki.gg/wiki/Secure_Execution_and_Tainting#Securely_post-hooking). The regression harness verifies bounded retention and disabled behavior, not live taint isolation or the source of the reported action-bar failure.
 
 ---
 

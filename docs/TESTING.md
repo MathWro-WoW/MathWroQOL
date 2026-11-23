@@ -30,6 +30,14 @@ Validate on each client affected by the change:
 
 The per-feature validation table in [AGENTS.md](../AGENTS.md#per-feature-validation) contains the broader gameplay checklist. Additional cases moved from the README:
 
+### Bounded taint capture
+
+Keep global tracing off (`/console taintLog 0`); level 4 previously crashed the user's client and must not be retried for this investigation. Run `/mqoltaint on`, then `/reload` once so the probes precede other MathWroQOL feature initializers. Play normally without changing other feature settings. `/mqoltaint` reports status. After the next matching failure, use `/mqoltaint off` and log out to flush SavedVariables.
+
+Inspect `_forever_/WTF/Account/<account>/SavedVariables/MathWroQOL.lua` (or the corresponding Retail path), under `MathWroQOLDB.taintDiagnostics.current` and `.previous`. Captures contain first-observed native snap/flyout taint stacks, first blocked-action details, ownership snapshots, build/settings context, and an occurrence count; they do not log every table access. Check `observation`: `already-tainted` is not evidence of an originating caller. Startup should do no diagnostic work when disabled; repeated layout calls and blocked actions must not append records or repeatedly build stacks.
+
+Automated coverage: `lua tests/TaintDiagnostics_smoke.lua` checks command enable/disable, preservation of modeled native behavior, first-observation ownership, stack/retention bounds, repeated-error counting, and two-session persistence. Actual native post-hook isolation and the original taint source still require in-game evidence. This diagnostic is not a fix for that error.
+
 ### Hearthstone destination zone
 
 Enable the feature, bind at an inn, travel away, and hover the Hearthstone from bags and action bars. Include an inn inside a keep/castle: its suffix must name the enclosing zone rather than the inn or keep. After upgrading from local-zone-only capture, bind again to replace the previously saved label. Check `/reload`, character isolation, stale or changed binds, and disable/re-enable. The zone must come from the observed bind, not the current location. Automated coverage: `tests/HearthstoneZone_smoke.lua` includes synthetic interior-to-zone map parents, direct zone maps, and unavailable-map/continent fallback cases on both clients; it does not certify the live map hierarchy.
