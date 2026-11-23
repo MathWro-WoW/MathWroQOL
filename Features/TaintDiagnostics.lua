@@ -2,15 +2,20 @@ local addonName, addon = ...
 local Diagnostics = { name = "taintDiagnostics" }
 addon:RegisterFeature(Diagnostics)
 
+local SETTING_FIELDS = { "variable", "GetVariable", "GetValue", "GetValueDerived", "getValue", "pendingValue" }
+local CACHE_ENTRIES = { "MultiActionBar_GetBarForPage", "MultiActionBar_Update",
+    "MultiActionBar_ShowAllGrids", "MultiActionBar_HideAllGrids" }
 local ACTION_FIELDS = { "action", "popupDirection", "feedback_action", "UpdateAction", "OnEvent" }
 local WATCHED = {
     ActionButton7 = ACTION_FIELDS,
     ActionButton10 = ACTION_FIELDS,
     MainActionBar = { "snappedToFrame", "flyoutDirection", "systemInfo", "SetPoint" },
+    MultiBarBottomLeft = { "isShownExternal", "editModeForceShow", "visibility", "systemInfo", "isHorizontal" },
+    SettingsPanel = { "settings", "GetSetting" },
     EditModeManagerFrame = { "editModeSystemAnchorDirty", "layoutApplyInProgress", "registeredSystemFrames" },
 }
 local PROBES = { snappedToFrame = "SetSnappedToFrame", flyoutDirection = "UpdateSpellFlyoutDirection" }
-local current, eventFrame, hooked
+local current, eventFrame, hooked, cacheHooked
 
 local function enabled()
     return addon.db and addon.db.taintDiagnostics and addon.db.taintDiagnostics.enabled
@@ -27,17 +32,27 @@ end
 -- Inspect ownership only: never read live action/aura values or change native fields.
 local function snapshot(extraName)
     local result = {}
-    local function inspect(name, fields)
-        local frame = _G[name]
-        if not frame then return end
+    local function inspectFrame(frame, fields)
+        if not frame then return { unavailable = true } end
         local owners = {}
         for _, field in ipairs(fields) do
             local secure, owner = issecurevariable(frame, field)
             owners[field] = secure and "secure-or-unset" or owner or "unknown"
         end
-        result[name] = owners
+        return owners
+    end
+    local function inspect(name, fields)
+        result[name] = inspectFrame(_G[name], fields)
     end
     for name, fields in pairs(WATCHED) do inspect(name, fields) end
+    -- These lookups are read-only; inspect the native setting objects, never
+    -- invoke their value getters or change their registration.
+    if Settings and Settings.GetSetting then
+        for index = 2, 8 do
+            local variable = "PROXY_SHOW_ACTIONBAR_" .. index
+            result[variable] = inspectFrame(Settings.GetSetting(variable), SETTING_FIELDS)
+        end
+    end
     if extraName and not result[extraName] then inspect(extraName, ACTION_FIELDS) end
     return result
 end
@@ -51,6 +66,7 @@ local function observe(frame, field, method, preexisting)
         method = method,
         elapsed = GetTime() - current.startedAt,
         stack = not preexisting and stack() or nil,
+        frames = snapshot(),
     }
     message("recorded " .. field .. (preexisting and " (already tainted; reload for startup capture)." or "."))
 end
@@ -113,6 +129,22 @@ function Diagnostics:Apply()
                 end)
             end
             observe(bar, field, "startup", true)
+        end
+    end
+    if not cacheHooked then
+        cacheHooked = true
+        for _, name in ipairs(CACHE_ENTRIES) do
+            if type(_G[name]) == "function" then
+                hooksecurefunc(_G, name, function()
+                    if not enabled() or current.firstBarCacheCall then return end
+                    current.firstBarCacheCall = {
+                        method = name,
+                        elapsed = GetTime() - current.startedAt,
+                        stack = stack(),
+                        frames = snapshot(),
+                    }
+                end)
+            end
         end
     end
     if not eventFrame then

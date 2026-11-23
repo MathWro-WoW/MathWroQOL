@@ -22,6 +22,12 @@ local function runtime(saved)
     function env.MainActionBar:SetSnappedToFrame(target) self.anchor = target end
     function env.MainActionBar:UpdateSpellFlyoutDirection(direction) self.direction = direction end
     env.ActionButton7, env.ActionButton10, env.EditModeManagerFrame = {}, {}, {}
+    env.SettingsPanel = {}
+    local visibilitySetting = {}
+    env.Settings = { GetSetting = function(variable)
+        if variable == "PROXY_SHOW_ACTIONBAR_2" then return visibilitySetting end
+    end }
+    function env.MultiActionBar_GetBarForPage(page) return page end
     function env.issecurevariable(frame, key)
         H.reads = H.reads + 1
         local owner = H.owners[frame] and H.owners[frame][key]
@@ -30,8 +36,9 @@ local function runtime(saved)
     function env.hooksecurefunc(frame, method, callback)
         local original = frame[method]
         frame[method] = function(self, ...)
-            original(self, ...)
+            local result = original(self, ...)
             callback(self, ...)
+            return result
         end
     end
     function env.debugstack()
@@ -70,6 +77,17 @@ local env, current = H.env, H.db.current
 assert(current.initial.MainActionBar.flyoutDirection == "secure-or-unset", "capture must distinguish clean baseline from later taint")
 H.owner(env.MainActionBar, "snappedToFrame", "OtherAddon")
 env.MainActionBar:SetSnappedToFrame("other anchor")
+assert(current.initial.PROXY_SHOW_ACTIONBAR_2 and current.initial.PROXY_SHOW_ACTIONBAR_2.GetValueDerived == "secure-or-unset",
+    "startup capture must retain ownership of native visibility-setting inputs")
+H.owner(env.Settings.GetSetting("PROXY_SHOW_ACTIONBAR_2"), "GetValueDerived", "MathWroQOL")
+assert(env.MultiActionBar_GetBarForPage(6) == 6, "cache tracing must preserve the native API result")
+assert(current.firstBarCacheCall.method == "MultiActionBar_GetBarForPage" and
+    current.firstBarCacheCall.stack == "producer.lua:42: native positioning caller",
+    "the first public cache entry must retain its caller")
+local cacheCall, cacheStacks = current.firstBarCacheCall, H.stackCalls
+for _ = 1, 10000 do env.MultiActionBar_GetBarForPage(6) end
+assert(current.firstBarCacheCall == cacheCall and H.stackCalls == cacheStacks,
+    "cache tracing must stop building stacks after the first call")
 assert(not current.probes.snappedToFrame, "another addon's state must not be blamed on MathWroQOL")
 H.owner(env.MainActionBar, "snappedToFrame", "MathWroQOL")
 env.MainActionBar:SetSnappedToFrame("new anchor")
@@ -81,6 +99,8 @@ local calls, reads = H.stackCalls, H.reads
 for _ = 1, 10000 do env.MainActionBar:SetSnappedToFrame("later anchor") end
 assert(current.probes.snappedToFrame == first and H.stackCalls == calls and H.reads == reads,
     "repeated layout calls must stop collecting data after the first matching observation")
+assert(current.probes.snappedToFrame.frames.PROXY_SHOW_ACTIONBAR_2.GetValueDerived == "MathWroQOL",
+    "first producer observation must include the native settings input ownership at that moment")
 H.stack = string.rep("x", 100000)
 H.owner(env.MainActionBar, "flyoutDirection", "MathWroQOL")
 env.MainActionBar:UpdateSpellFlyoutDirection("DOWN")
