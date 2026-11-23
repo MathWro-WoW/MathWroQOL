@@ -2,12 +2,28 @@
 local function runClient(interface)
     local frames, postCalls = {}, {}
     local guid, bind, zone = "Player-A", "Deepwater Tavern", "Wetlands"
+    local mapID
+    -- Synthetic map IDs: inn interior -> keep interior -> geographical zone.
+    local maps = {
+        [1] = { mapID = 1, name = "Elk's Horn Inn", mapType = 5, parentMapID = 2, flags = 0 },
+        [2] = { mapID = 2, name = "Farholde Keep", mapType = 4, parentMapID = 3, flags = 0 },
+        [3] = { mapID = 3, name = "Riverglades", mapType = 3, parentMapID = 4, flags = 0 },
+        [4] = { mapID = 4, name = "Eastern Kingdoms", mapType = 2, parentMapID = 0, flags = 0 },
+    }
     local queries = 0
     local secret = {}
     function GetBuildInfo() return nil, nil, nil, interface end
     function UnitGUID(unit) assert(unit == "player"); queries = queries + 1; return guid end
     function GetBindLocation() queries = queries + 1; return bind end
     function GetRealZoneText() queries = queries + 1; return zone end
+    C_Map = {
+        GetBestMapForUnit = function(unit)
+            assert(unit == "player")
+            queries = queries + 1
+            return mapID
+        end,
+        GetMapInfo = function(id) queries = queries + 1; return maps[id] end,
+    }
     function issecretvalue(value) return value == secret end
     function CreateFrame()
         local frame = { events = {} }
@@ -17,7 +33,7 @@ local function runClient(interface)
         frames[#frames + 1] = frame
         return frame
     end
-    Enum = { TooltipDataType = { Item = 0 } }
+    Enum = { TooltipDataType = { Item = 0 }, UIMapType = { Zone = 3 } }
     TooltipDataProcessor = { AddTooltipPostCall = function(kind, callback)
         assert(kind == Enum.TooltipDataType.Item)
         postCalls[#postCalls + 1] = callback
@@ -105,6 +121,24 @@ local function runClient(interface)
     bind, zone = "Stormwind City", "Stormwind City"
     bound()
     assert(hover(6948, "Stormwind City") == "Stormwind City", "a destination already named after its zone needs no repeated name")
+    bind, zone, mapID = "Farholde Keep", "Elk's Horn Inn", 1
+    bound()
+    mapID, zone = nil, "Dun Morogh"
+    assert(hover(6948, "Return to Farholde Keep.") == "Return to Farholde Keep (Riverglades).",
+        "an inn nested inside a keep must save its enclosing map zone, not the inn's local zone text")
+    mapID = 3
+    zone = "Farholde Keep"
+    bound()
+    assert(hover(6948, "Return to Farholde Keep.") == "Return to Farholde Keep (Riverglades).",
+        "an outdoor zone map must supply the zone even when local zone text names the keep")
+    mapID = 4
+    bound()
+    assert(hover(6948, "Return to Farholde Keep.") == "Return to Farholde Keep.",
+        "a continent map must not replace the local destination with a continent name")
+    mapID, zone = 999, "Riverglades"
+    bound()
+    assert(hover(6948, "Return to Farholde Keep.") == "Return to Farholde Keep (Riverglades).",
+        "unavailable map metadata must retain the real-zone-text fallback")
 end
 runClient(16001)
 runClient(120100)

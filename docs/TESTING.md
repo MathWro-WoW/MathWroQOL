@@ -32,7 +32,7 @@ The per-feature validation table in [AGENTS.md](../AGENTS.md#per-feature-validat
 
 ### Hearthstone destination zone
 
-Enable the feature, bind at an inn, travel away, and hover the Hearthstone from bags and action bars. Check `/reload`, character isolation, stale or changed binds, and disable/re-enable. The zone must come from the observed bind, not the current location. Automated coverage: `tests/HearthstoneZone_smoke.lua`.
+Enable the feature, bind at an inn, travel away, and hover the Hearthstone from bags and action bars. Include an inn inside a keep/castle: its suffix must name the enclosing zone rather than the inn or keep. After upgrading from local-zone-only capture, bind again to replace the previously saved label. Check `/reload`, character isolation, stale or changed binds, and disable/re-enable. The zone must come from the observed bind, not the current location. Automated coverage: `tests/HearthstoneZone_smoke.lua` includes synthetic interior-to-zone map parents, direct zone maps, and unavailable-map/continent fallback cases on both clients; it does not certify the live map hierarchy.
 
 ### Heroic Strike companion
 
